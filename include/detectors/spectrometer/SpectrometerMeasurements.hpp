@@ -24,15 +24,19 @@
 #include <Acts/Geometry/TrackingGeometry.hpp>
 #include <Acts/Surfaces/Surface.hpp>
 #include <Acts/Utilities/CalibrationContext.hpp>
+
 #include <SHiP/RecHit.hpp>
 #include <cmath>
 #include <limits>
+#include <utility>
 #include <vector>
 
 class SpectrometerMeasurements {
    public:
     struct Measurement {
-        const Acts::Surface* surface;
+        // Non-owning; points into the TrackingGeometry that SpillContext
+        // keeps alive alongside this container (see SpillContext.hpp).
+        const Acts::Surface* surface = nullptr;
         Acts::Vector3 global;  // kept alongside local for seed construction
         Acts::Vector2 local;
         Acts::SquareMatrix2 covariance;
@@ -42,14 +46,15 @@ class SpectrometerMeasurements {
     // zWindowMm: a hit is assigned to the nearest station surface only if
     // within this z distance — the same tolerance selectOneHitPerStation used,
     // now applied per-hit instead of picking a single best hit per station.
+    // The same value is reused as the on-surface tolerance for globalToLocal,
+    // since both express "how far off the station plane a hit may sit".
     SpectrometerMeasurements(const Acts::TrackingGeometry& geometry,
                              const Acts::GeometryContext& gctx,
                              const std::vector<SHiP::RecHit>& hits, double zWindowMm = 510.0) {
-        std::vector<const Acts::Surface*> stationSurfaces;
-        geometry.visitSurfaces([&](const Acts::Surface* s) {
-            stationSurfaces.push_back(s);
-            std::cout << "surface z: " << s->center(gctx).z() << std::endl;
-        });
+        double const zWindow = zWindowMm * Acts::UnitConstants::mm;
+        std::vector<std::pair<const Acts::Surface*, double>> stationSurfaces;
+        geometry.visitSurfaces(
+            [&](const Acts::Surface* s) { stationSurfaces.emplace_back(s, s->center(gctx).z()); });
 
         for (auto const& hit : hits) {
             Acts::Vector3 const global(hit.position[0] * Acts::UnitConstants::mm,
@@ -58,27 +63,18 @@ class SpectrometerMeasurements {
 
             const Acts::Surface* best = nullptr;
             double bestDz = std::numeric_limits<double>::max();
-            for (auto const* s : stationSurfaces) {
-                double const dz = std::abs(global.z() - s->center(gctx).z());
-                // std::cout<<"dz: "<<dz<<" - hit: "<<global.z()<<" - tracker:
-                // "<<s->center(gctx).z()<<std::endl;
-                if (dz < zWindowMm * Acts::UnitConstants::mm && dz < bestDz) {
+            for (auto const& [s, zSurface] : stationSurfaces) {
+                double const dz = std::abs(global.z() - zSurface);
+                if (dz < zWindow && dz < bestDz) {
                     bestDz = dz;
                     best = s;
                 }
             }
-            if (!best) {
-                // std::cout<<"no best"<<std::endl;
+            if (!best)
                 continue;  // no station within window — drop the hit
-            }
-            // std::cout<<"found a window"<<std::endl;
-            auto locRes = best->globalToLocal(gctx, global, Acts::Vector3::UnitZ(),
-                                              zWindowMm * Acts::UnitConstants::mm);
-            if (!locRes.ok()) {
-                // std::cout<<"no local"<<std::endl;
+            auto locRes = best->globalToLocal(gctx, global, Acts::Vector3::UnitZ(), zWindow);
+            if (!locRes.ok())
                 continue;
-            }
-            // std::cout<<"about to push back!"<<std::endl;
             double const time = hit.time * Acts::UnitConstants::ns;
             auto const cov = hitCovariance(HitUncertaintyContext{global, time});
             auto const idx = static_cast<ActsExamples::Index>(m_measurements.size());
@@ -99,12 +95,7 @@ class SpectrometerMeasurements {
     template <typename trajectory_t>
     void calibrator(const Acts::GeometryContext&, const Acts::CalibrationContext&,
                     const Acts::SourceLink& sl, typename trajectory_t::TrackStateProxy ts) const {
-        // std::cout << "calibrator called\n";
-        // std::cout<<"geometry id: "<<sl.get<IndexSourceLink>().geometryId()<<std::endl;
-
-        // std::cout<<"measurements size: "<<m_measurements.size()<<std::endl;
         auto const& indexSourceLink = sl.get<IndexSourceLink>();
-        // std::cout<<"link index: "<<indexSourceLink.index()<<std::endl;
         auto const& m = m_measurements[indexSourceLink.index()];
         ts.allocateCalibrated(m.local, m.covariance);
         // Without this, states this calibrator services never carry an

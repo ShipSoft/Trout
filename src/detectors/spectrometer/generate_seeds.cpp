@@ -6,13 +6,12 @@
 
 #include <Acts/Definitions/Units.hpp>
 #include <Acts/Geometry/GeometryIdentifier.hpp>
+
 #include <cmath>
 #include <cstddef>
 #include <optional>
 #include <utility>
 #include <vector>
-
-using namespace phlex;
 
 namespace {
 
@@ -108,8 +107,8 @@ void register_generate_seeds(ModuleProxy& m, phlex::experimental::identifier con
              auto const next = obj.find_next_valid(*current + 1);
              return std::make_pair(next, seed);
          },
-         seedLayerName, concurrency::serial)
-        .input_family(product_selector{
+         seedLayerName, phlex::concurrency::serial)
+        .input_family(phlex::product_selector{
             .creator = "prepare_measurements", .layer = layer, .suffix = "spill_context"})
         .output_product_suffixes("seed_hit_pair");
 }
