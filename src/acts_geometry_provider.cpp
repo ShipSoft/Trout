@@ -49,17 +49,19 @@
 #include <Acts/Surfaces/PlaneSurface.hpp>
 #include <Acts/Surfaces/RectangleBounds.hpp>
 #include <Acts/Utilities/Logger.hpp>
+
 #include <algorithm>
 #include <array>
+#include <cstddef>
 #include <cstdlib>
 #include <filesystem>  // NOLINT(build/c++17)
+#include <map>
 #include <memory>
 #include <optional>
 #include <stdexcept>
 #include <string>
+#include <utility>
 
-using namespace phlex;
-// noop
 namespace {
 
 constexpr int kNumStations = 4;
@@ -69,44 +71,56 @@ struct StationPlacement {
     double halfX{0}, halfY{0};  // transverse bounding-box half-extents, mm
 };
 
-// Depth-first search from `pv` for a volume named `target_name`, composing
-// the placement transform with G4NavigationHistory (Geant4's own transform
-// composition, rather than hand-rolled affine-transform math) so any
-// rotated ancestors above the tracker are handled correctly.
-std::optional<StationPlacement> find_station(G4VPhysicalVolume* pv, std::string const& target_name,
-                                             G4NavigationHistory& history) {
-    if (pv->GetName() == target_name) {
+using PlacementMap = std::map<std::string, std::optional<StationPlacement>>;
+
+// Single depth-first search from `pv` filling in every requested volume in
+// `targets` (one traversal for all stations instead of one per station),
+// composing the placement transform with G4NavigationHistory (Geant4's own
+// transform composition, rather than hand-rolled affine-transform math) so
+// any rotated ancestors above the tracker are handled correctly.
+void find_stations(G4VPhysicalVolume* pv, PlacementMap& targets, std::size_t& remaining,
+                   G4NavigationHistory& history) {
+    if (auto it = targets.find(pv->GetName()); it != targets.end() && !it->second) {
         auto const origin = history.GetTopTransform().Inverse().TransformPoint(G4ThreeVector());
         G4ThreeVector pMin, pMax;
         pv->GetLogicalVolume()->GetSolid()->BoundingLimits(pMin, pMax);
-        return StationPlacement{origin, 0.5 * (pMax.x() - pMin.x()), 0.5 * (pMax.y() - pMin.y())};
+        it->second =
+            StationPlacement{origin, 0.5 * (pMax.x() - pMin.x()), 0.5 * (pMax.y() - pMin.y())};
+        --remaining;
+        return;  // stations don't nest inside each other
     }
     auto* lv = pv->GetLogicalVolume();
-    for (int i = 0; i < lv->GetNoDaughters(); ++i) {
+    for (std::size_t i = 0; i < lv->GetNoDaughters() && remaining > 0; ++i) {
         auto* daughter = lv->GetDaughter(i);
         history.NewLevel(daughter, kNormal, daughter->GetCopyNo());
-        if (auto found = find_station(daughter, target_name, history))
-            return found;
+        find_stations(daughter, targets, remaining, history);
         history.BackLevel();
     }
-    return std::nullopt;
 }
 
 std::shared_ptr<Acts::TrackingGeometry> build_tracking_geometry(G4VPhysicalVolume* world_pv) {
-    std::array<StationPlacement, kNumStations> stations;
+    auto station_name = [](int i) { return "/SHiP/trackers/station_" + std::to_string(i + 1); };
 
+    PlacementMap targets;
+    for (int i = 0; i < kNumStations; ++i)
+        targets.emplace(station_name(i), std::nullopt);
+
+    G4NavigationHistory history;
+    history.SetFirstEntry(world_pv);
+    std::size_t remaining = targets.size();
+    find_stations(world_pv, targets, remaining, history);
+
+    std::array<StationPlacement, kNumStations> stations;
     for (int i = 0; i < kNumStations; ++i) {
-        std::string const name = "/SHiP/trackers/station_" + std::to_string(i + 1);
-        G4NavigationHistory history;
-        history.SetFirstEntry(world_pv);
-        auto found = find_station(world_pv, name, history);
+        auto const& found = targets.at(station_name(i));
         if (!found)
-            throw std::runtime_error("acts_geometry_provider: could not find '" + name +
+            throw std::runtime_error("acts_geometry_provider: could not find '" + station_name(i) +
                                      "' in geometry");
         stations[i] = *found;
     }
 
-    // Container volume spanning all stations, plus a margin.
+    // Container volume spanning all stations, plus a margin. Sizes are
+    // computed in G4 mm and converted to ACTS units in one place below.
     double minZ = stations.front().origin.z();
     double maxZ = stations.front().origin.z();
     double halfX = 0, halfY = 0;
@@ -116,14 +130,16 @@ std::shared_ptr<Acts::TrackingGeometry> build_tracking_geometry(G4VPhysicalVolum
         halfX = std::max(halfX, s.halfX);
         halfY = std::max(halfY, s.halfY);
     }
-    double const margin = 100. * Acts::UnitConstants::mm;
-    double const containerHalfZ = 0.5 * (maxZ - minZ) + margin;
-    double const containerZ = 0.5 * (maxZ + minZ);
+    double const margin_mm = 100.;
+    double const containerHalfX = (halfX + margin_mm) * Acts::UnitConstants::mm;
+    double const containerHalfY = (halfY + margin_mm) * Acts::UnitConstants::mm;
+    double const containerHalfZ = (0.5 * (maxZ - minZ) + margin_mm) * Acts::UnitConstants::mm;
+    double const containerZ = 0.5 * (maxZ + minZ) * Acts::UnitConstants::mm;
 
     auto containerBounds =
-        std::make_shared<Acts::CuboidVolumeBounds>(halfX + margin, halfY + margin, containerHalfZ);
+        std::make_shared<Acts::CuboidVolumeBounds>(containerHalfX, containerHalfY, containerHalfZ);
     Acts::Transform3 containerTrf = Acts::Transform3::Identity();
-    containerTrf.translate(Acts::Vector3(0., 0., containerZ * Acts::UnitConstants::mm));
+    containerTrf.translate(Acts::Vector3(0., 0., containerZ));
 
     auto worldVolume = std::make_unique<Acts::TrackingVolume>(containerTrf, containerBounds,
                                                               "SpectrometerStations");
@@ -224,6 +240,8 @@ PHLEX_REGISTER_PROVIDERS(m, config) {
         if (!worldLV)
             throw std::runtime_error("acts_geometry_provider: GeoModel->G4 conversion failed for " +
                                      db_file);
+        // Registered in (and owned by) the G4PhysicalVolumeStore; reclaimed
+        // by the G4GeometryCleanup teardown above, never deleted directly.
         auto* worldPV = new G4PVPlacement(nullptr, G4ThreeVector(), worldLV, worldLV->GetName(),
                                           nullptr, false, 0);
 
@@ -236,10 +254,10 @@ PHLEX_REGISTER_PROVIDERS(m, config) {
 
     m.provide(
          "read_tracking_geometry",
-         [detector, cleanup](data_cell_index const&) -> std::shared_ptr<DetectorGeometry> {
+         [detector, cleanup](phlex::data_cell_index const&) -> std::shared_ptr<DetectorGeometry> {
              return detector;
          },
-         concurrency::unlimited)
+         phlex::concurrency::unlimited)
         .output_product("tracking_geometry", phlex::experimental::identifier{"detector"},
                         phlex::experimental::identifier{"job"});
 }
