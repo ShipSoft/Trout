@@ -2,10 +2,10 @@
 //
 // SPDX-License-Identifier: LGPL-3.0-or-later
 
-// upstream_tagger_histogrammer.hpp — Upstream Tagger validation histograms.
-// Currently just per-event hit multiplicity; independent of the other
-// subdetector histogrammers, so UBT-specific monitoring can grow here
-// without touching them.
+// multiplicity_histogrammer.hpp — per-event hit-multiplicity validation
+// histogram, shared by the subdetectors whose monitoring is (so far) just a
+// multiplicity count. A detector that grows richer monitoring gets its own
+// histogrammer class instead (see SpectrometerHistogrammer).
 
 #pragma once
 
@@ -15,29 +15,30 @@
 #include <ROOT/RHistConcurrentFiller.hxx>
 #include <ROOT/RHistFillContext.hxx>
 
-#include <SHiP/detectors/UBTHit.hpp>
-#include <cstdint>
 #include <memory>
 #include <oneapi/tbb/enumerable_thread_specific.h>
+#include <string>
 #include <utility>
 #include <vector>
 
-class UpstreamTaggerHistogrammer {
+template <typename Hit>
+class MultiplicityHistogrammer {
    public:
-    explicit UpstreamTaggerHistogrammer(std::shared_ptr<HistoFileService> file_service)
+    MultiplicityHistogrammer(std::shared_ptr<HistoFileService> file_service, std::string hist_name,
+                             std::string hist_title)
         : file_service_{std::move(file_service)},
-          h_multiplicity_{std::make_shared<HistD>(static_cast<std::uint64_t>(1000),
-                                                  std::make_pair(-0.5, 999.5))},
+          hist_name_{std::move(hist_name)},
+          hist_title_{std::move(hist_title)},
+          h_multiplicity_{make_hist(1000, -0.5, 999.5)},
           f_multiplicity_{h_multiplicity_} {}
 
-    void observe(std::vector<SHiP::UBTHit> const& hits) {
+    void observe(std::vector<Hit> const& hits) {
         ensure_context().Fill(static_cast<double>(hits.size()));
     }
 
-    ~UpstreamTaggerHistogrammer() {
+    ~MultiplicityHistogrammer() {
         fill_contexts_.clear();
-        file_service_->put("h_upstream_tagger_multiplicity",
-                           "Upstream tagger hits per event;N;Events", *h_multiplicity_);
+        file_service_->put(hist_name_.c_str(), hist_title_.c_str(), *h_multiplicity_);
     }
 
    private:
@@ -54,6 +55,8 @@ class UpstreamTaggerHistogrammer {
     }
 
     std::shared_ptr<HistoFileService> file_service_;
+    std::string hist_name_;
+    std::string hist_title_;
     std::shared_ptr<HistD> h_multiplicity_;
     FillerD f_multiplicity_;
     tbb::enumerable_thread_specific<std::shared_ptr<ContextD>> fill_contexts_;

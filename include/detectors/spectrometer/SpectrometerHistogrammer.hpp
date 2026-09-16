@@ -60,11 +60,6 @@ class SpectrometerHistogrammer {
     using FillerD = ROOT::Experimental::RHistConcurrentFiller<double>;
     using ContextD = ROOT::Experimental::RHistFillContext<double>;
 
-    static std::shared_ptr<HistD> make_hist(int nbins, double low, double high) {
-        return std::make_shared<HistD>(static_cast<std::uint64_t>(nbins),
-                                       std::make_pair(low, high));
-    }
-
     struct FillContexts {
         std::shared_ptr<ContextD> multiplicity, ref_x, ref_y, ref_z;
     };
