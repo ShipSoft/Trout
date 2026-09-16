@@ -24,8 +24,8 @@ IncludeCategories:
   # ROOT headers
   - Regex: '^<(T[A-Z]|ROOT/|RN)'
     Priority: 4
-  # External library headers
-  - Regex: '^<(taskflow|yaml-cpp|nlohmann)'
+  # ACTS headers
+  - Regex: '^<Acts/'
     Priority: 5
   # System headers
   - Regex: '^<'
