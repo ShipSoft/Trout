@@ -11,23 +11,20 @@ requires-pixi = ">=0.68"
 [feature.index.dependencies]
 rattler-build = ">=0.35"
 
-
-
 [dependencies]
 # SHiP/HEP packages (prefix.dev/ship + conda-forge)
+shipdatamodel = "*"
 shipgeometry = "*"
 shipgeometryservice = ">=0.3"
 field-service-core = "*"
 field-service-g4 = "*"
+field-service-tools = "==0.1.0"
+acts-core = "*"
 phlex = ">=0.3.0"
 root = ">=6.36"
 geant4 = ">=11.3"
-pythia8 = ">=8.3"
 random123 = "*"
 libjsonnet = "*"
-eigen = ">=5.0.1,<5.0.2"
-field-service-tools="==0.1.0"
-gdb="*"
 
 # C++ libraries
 libboost-devel = "*"
@@ -36,6 +33,7 @@ spdlog = "*"
 fmt = "*"
 mp-units = "*"
 ms-gsl = "*"
+eigen = "*"
 
 # Build tools
 cmake = ">=3.27"
@@ -49,47 +47,67 @@ scripts = ["activate.sh"]
 
 configure = { cmd = """
 cmake -S . -B build -G Ninja \
-    -DCMAKE_BUILD_TYPE=Debug \
     -DCMAKE_INSTALL_PREFIX=$CONDA_PREFIX \
     -DCMAKE_INSTALL_LIBDIR=lib \
-    -DActs_DIR=$PIXI_PROJECT_ROOT/../acts/install/lib/cmake/Acts/ \
-    -DCOVFIE_FINGERPRINT=field_service_covfie_v0.15.2 \
     -DCMAKE_PREFIX_PATH=$CONDA_PREFIX
 """ }
 
-build = { cmd = "cmake --build build -j8 --config Debug", depends-on = ["configure"] }
+build = { cmd = "cmake --build build --parallel", depends-on = ["configure"] }
 install = { cmd = "cmake --install build", depends-on = ["build"] }
 test = { cmd = "ctest --test-dir build --output-on-failure", depends-on = ["build"] }
 smoke = { cmd = "scripts/smoke.sh", depends-on = ["build"] }
 clean = "rm -rf build"
 
-
 [feature.bench.dependencies]
 hyperfine = "*"
-just = "*"
 linux-perf = "*"
+
+# Linting / formatting toolchain. prek orchestrates the hooks; the tools come
+# from this environment so versions are tracked in pixi.lock and run
+# identically everywhere.
+[feature.lint.dependencies]
+prek = "*"
+python = ">=3.11"
+clang-format = "23.*"
+codespell = "*"
+reuse = "*"
+cffconvert = "*"
+commitizen = "*"
+
+# Pinned via PyPI to match the hook revs exactly: conda-forge's cpplint is
+# stuck at 1.6.0 (a different, stale fork), and its gersemi lags upstream and
+# would reflow CMake files.
+[feature.lint.pypi-dependencies]
+cpplint = "==2.0.2"
+gersemi = "==0.28.1"
+
+[feature.lint.tasks]
+lint = "prek run --all-files"
+# Install the git hooks and route them through `pixi run` so the
+# conda-provided hook tools are on PATH at commit time (required on NixOS,
+# where the tools are not runnable without pixi activation).
+install-hooks = '''
+prek install --hook-type pre-commit --hook-type commit-msg
+hooks=$(git rev-parse --git-path hooks)
+sed -i 's#"$PREK" hook-impl#pixi run -e lint prek hook-impl#' "$hooks/pre-commit"
+sed -i 's#"$PREK" hook-impl#pixi run -e lint prek hook-impl#' "$hooks/commit-msg"
+'''
 
 # --- Multi-package development ------------------------------------------
 # Build shipdatamodel from a sibling checkout instead of a released conda
 # package: `pixi run -e dev build`/`install`/`test`/`phlex ...`. Requires
 # ../data-model to exist (its pixi.toml packages it as a pixi-build source
-# dependency). This is the only environment with a usable shipdatamodel —
-# `shipdatamodel` was never a `[dependencies]` entry here, so building trout
-# has always meant building data-model from source first; this just does it
-# through pixi's dependency graph instead of the old manual
-# configure-datamodel/build-datamodel/install-datamodel task chain.
-# ACTS is not part of this dependency graph (no conda package for this
-# checked-out version) — it keeps coming in via the -DActs_DIR flag on the
-# `configure` task above, which points at the sibling ../acts checkout
-# regardless of environment.
+# dependency).
 # Do NOT commit this block enabled together with pixi.lock changes it causes
 # if that leaves the committed lock unresolvable without the sibling checkout
 # — check `git diff pixi.lock` before committing.
 [feature.dev.dependencies]
 shipdatamodel = { path = "../data-model" }
+gdb = "*"
 
 [environments]
 default = { solve-group = "default" }
 bench = { features = ["bench"], solve-group = "default" }
 index = { features = ["index"], solve-group = "default" }
+lint = { features = ["lint"], solve-group = "lint" }
 dev = { features = ["dev"] }
