@@ -37,7 +37,7 @@ HISTOGRAMS = [
     "h_sim_hit_z",
     "h_ref_x",
     "h_ref_y",
-    "h_ref_z",    
+    "h_ref_z",
     "h_sim_particle_vtx_x",
     "h_sim_particle_vtx_y",
     "h_sim_particle_vtx_z",
@@ -58,10 +58,9 @@ def check_ntuples(path):
 
 
 def check_histograms(path):
-    try:
-        file = ROOT.TFile.Open(path)
-    except OSError as e:
-        return [f"{path}: cannot open file: {e}"]
+    # TFile.Open reports failure through nullptr/IsZombie rather than a
+    # Python exception.
+    file = ROOT.TFile.Open(path)
     if not file or file.IsZombie():
         return [f"{path}: cannot open file"]
     errors = []
@@ -71,6 +70,7 @@ def check_histograms(path):
             errors.append(f"{path}: missing histogram '{name}'")
         elif hist.GetEntries() == 0:
             errors.append(f"{path}: histogram '{name}' has no entries")
+    file.Close()
     return errors
 
 
