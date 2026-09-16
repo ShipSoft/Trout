@@ -2,39 +2,34 @@
 
 Thank you for your interest in contributing to trout! As part of the SHiP Collaboration, we follow a set of standards to ensure code quality and maintainability.
 
-## Development Workflow
+## Development workflow
 
-1. **Fork and Clone**: Create a fork of the repository and clone it locally.
-2. **Environment**: Ensure you have the required dependencies (ROOT, Geant4, Pythia8, Phlex, etc.). Using the SHiP software stack container is recommended.
-3. **Pre-commit Hooks**: We use `pre-commit` to enforce coding standards. Install the hooks before making changes:
+1. **Fork and clone** the repository.
+2. **Environment**: the supported way to obtain build dependencies (ROOT, ACTS, phlex, the SHiP geometry/field/data-model packages, a recent CMake/Ninja/compiler) is [pixi](https://pixi.sh):
    ```bash
-   pre-commit install
+   pixi install
+   pixi run build
    ```
-4. **Branching**: Create a feature branch for your changes.
-5. **Coding Standards**:
-   - Follow the existing C++ style (enforced by `clang-format` and `cpplint`).
-   - Use `ruff` for Python script formatting.
-   - Ensure all files have the correct SPDX license headers (REUSE compliant).
-6. **Commits**: We follow [Conventional Commits](https://www.conventionalcommits.org/). This helps in automated changelog generation.
-   - `feat: ...` for new features
-   - `fix: ...` for bug fixes
-   - `docs: ...` for documentation changes
-   - `style: ...` for formatting
-   - `refactor: ...` for code refactoring
-7. **Testing**:
-   - Run existing smoke tests using `just`:
-     ```bash
-     just build
-     phlex -c workflows/gun_only.jsonnet
-     ```
-   - Add new workflows or benchmarks if you introduce new features.
-8. **Submission**: Open a Pull Request against the `main` branch. Ensure the CI passes.
+   See `pixi.toml` for the full list of tasks (`configure`, `build`, `install`, `test`, `smoke`, `clean`).
+3. **Pre-commit hooks**: we enforce style and licensing via [`prek`](https://github.com/j178/prek) (a drop-in `pre-commit` replacement). The hook tools come from the pixi `lint` environment, so versions are tracked in `pixi.lock` and run identically everywhere. Install the pre-commit and commit-msg hooks once:
+   ```bash
+   pixi run install-hooks
+   ```
+   Run all hooks manually at any time with `pixi run lint`.
+4. **Branching**: create a feature branch for your changes.
+5. **Coding standards**:
+   - C++23; style enforced by `clang-format` (`.clang-format`) and `cpplint` (`CPPLINT.cfg`).
+   - CMake formatting enforced by `gersemi`.
+   - Every new file must carry an SPDX header (REUSE-compliant; verified by `reuse lint`).
+6. **Commits**: we follow [Conventional Commits](https://www.conventionalcommits.org/), validated by `cz check` (commitizen). This also drives automated changelog generation via `git-cliff`.
+7. **Testing**: run the end-to-end smoke test with `pixi run smoke`. Add new workflows or validation checks if you introduce new features.
+8. **Submission**: open a pull request against `main`. Ensure the CI passes.
 
-## Coding Style
+## Coding style
 
 - **C++**: We use C++23. Style is defined in `.clang-format`.
-- **Python**: Follow PEP 8 (enforced by `ruff`).
-- **Configuration**: Workflows are defined using [Jsonnet](https://jsonnet.org/).
+- **Python**: Follow PEP 8.
+- **Configuration**: Workflows are defined using [Jsonnet](https://jsonnet.org/); shared structure lives in `workflows/lib/`.
 
 ## Licensing
 
