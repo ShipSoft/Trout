@@ -175,8 +175,9 @@ class HitRNTupleWriter {
     // rec_output_module.cpp), so sim_writers_ is guaranteed to hold a value
     // whenever this is actually called.
     template <typename Hit>
-    void write_sim(std::vector<Hit> const& hits) {
-        write_all(hits, sim_writers_->template get<Hit>());
+    void write_sim(std::shared_ptr<std::vector<Hit>> const& hits) {
+        if (hits)
+            write_all(*hits, sim_writers_->template get<Hit>());
     }
 
    private:

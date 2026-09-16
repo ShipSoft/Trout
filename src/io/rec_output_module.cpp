@@ -80,16 +80,19 @@ class SimTruthHistogrammer {
           f_particle_vtx_y_{h_particle_vtx_y_},
           f_particle_vtx_z_{h_particle_vtx_z_} {}
 
-    void observe(SimHits const& sim_hits, SimParticles const& sim_particles) {
+    void observe(std::shared_ptr<SimHits> const& sim_hits,
+                 std::shared_ptr<SimParticles> const& sim_particles) {
+        if (!sim_hits || !sim_particles)
+            return;
         auto& ctxs = ensure_contexts();
-        ctxs.hit_multiplicity->Fill(static_cast<double>(sim_hits.size()));
-        for (auto const& hit : sim_hits) {
+        ctxs.hit_multiplicity->Fill(static_cast<double>(sim_hits->size()));
+        for (auto const& hit : *sim_hits) {
             ctxs.hit_x->Fill(hit.position[0]);
             ctxs.hit_y->Fill(hit.position[1]);
             ctxs.hit_z->Fill(hit.position[2]);
         }
-        ctxs.particle_multiplicity->Fill(static_cast<double>(sim_particles.size()));
-        for (auto const& particle : sim_particles) {
+        ctxs.particle_multiplicity->Fill(static_cast<double>(sim_particles->size()));
+        for (auto const& particle : *sim_particles) {
             ctxs.particle_vtx_x->Fill(particle.vertex[0]);
             ctxs.particle_vtx_y->Fill(particle.vertex[1]);
             ctxs.particle_vtx_z->Fill(particle.vertex[2]);
@@ -149,7 +152,8 @@ class RecoNoop {
    public:
     void observe(SpectrometerTracks const&, UpstreamTaggerObjects const&,
                  SurroundTaggerObjects const&, CalorimeterObjects const&,
-                 TimingDetectorObjects const&, SimHits const&, SimParticles const&) {}
+                 TimingDetectorObjects const&, std::shared_ptr<SimHits> const&,
+                 std::shared_ptr<SimParticles> const&) {}
     void observe_tracks_only(SpectrometerTracks const&, UpstreamTaggerObjects const&,
                              SurroundTaggerObjects const&, CalorimeterObjects const&,
                              TimingDetectorObjects const&) {}
