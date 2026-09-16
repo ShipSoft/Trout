@@ -3,9 +3,18 @@
 #
 # SPDX-License-Identifier: LGPL-3.0-or-later
 
-# Quick smoke test for CI: generate a small simulation-like input, run the
-# digitisation workflow end to end, and check that the outputs were produced.
+# Quick smoke test for CI: generate all inputs (geometry DB, field map,
+# simulation-like hits), run the reconstruction workflow end to end, and
+# check that the outputs were produced. Self-contained: everything comes
+# from the pixi environment and this repository.
 set -euo pipefail
+
+# Geometry DB from the installed shipgeometry package.
+build_geometry smoke_geometry.db
+
+# Constant zero field over the field-map volume: make_test_input generates
+# straight-line tracks, so a field-free propagation matches them exactly.
+generate_constant_cvf smoke_field.cvf 0 0 0 -4000 4000 -4000 4000 0 100000
 
 ./build/make_test_input smoke_input.root 10
 

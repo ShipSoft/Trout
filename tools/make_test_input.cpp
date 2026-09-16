@@ -21,13 +21,17 @@
 #include <SHiP/detectors/TimeDetHit.hpp>
 #include <SHiP/detectors/UBTHit.hpp>
 #include <SHiP/detectors/detector_id.hpp>
+#include <array>
 #include <cstdint>
 #include <cstdio>
+#include <exception>
 #include <limits>
 #include <philox_rng.hpp>
 #include <string>
 
-std::vector<double> stat_z = {84070, 86070, 93070, 95070};
+// Global z positions [mm] of the four straw-tube stations
+// (/SHiP/trackers/station_1..4 in the geometry DB).
+constexpr std::array<double, 4> stat_z = {84070, 86070, 93070, 95070};
 
 using SmokeTestWriters = TypedHitWriters<
     NamedHit<"sim_particles", SHiP::SimParticle>, NamedHit<"sim_hits", SHiP::SimHit>,
@@ -37,7 +41,15 @@ using SmokeTestWriters = TypedHitWriters<
 
 int main(int argc, char* argv[]) {
     std::string const filename = argc > 1 ? argv[1] : "smoke_input.root";
-    auto const n_events = argc > 2 ? std::stoul(argv[2]) : 10UL;
+    unsigned long n_events = 10UL;
+    if (argc > 2) {
+        try {
+            n_events = std::stoul(argv[2]);
+        } catch (std::exception const&) {
+            std::fprintf(stderr, "invalid event count: %s\n", argv[2]);
+            return 1;
+        }
+    }
     // The event loop counts (and seeds the RNG) with a uint32_t.
     if (n_events > std::numeric_limits<std::uint32_t>::max()) {
         std::fprintf(stderr, "n_events out of range: %lu\n", n_events);
@@ -53,7 +65,7 @@ int main(int argc, char* argv[]) {
         SHiP::detector_id::TimingDetector};
 
     for (std::uint32_t event = 0; event < n_events; ++event) {
-        Shannon::PhiloxRng rng{0, 0x7E57DA7A, event};
+        Trout::PhiloxRng rng{0, 0x7E57DA7A, event};
 
         auto const n_tracks = 1 + static_cast<int>(rng.uniform(0.0, 3.0));
         for (int track = 0; track < n_tracks; ++track) {
@@ -66,23 +78,31 @@ int main(int argc, char* argv[]) {
             particle.energy = particle.momentum[2];
             writers.get<SHiP::SimParticle>().write(particle);
 
-            for (auto const detector : detectors) {
-                SHiP::SimHit sim_hit;
-                sim_hit.detectorId = static_cast<std::int32_t>(detector);
-                sim_hit.trackId = track;
-                sim_hit.pdgCode = particle.pdgCode;
+            // Straight-line track through the four straw stations, all hits
+            // sharing one time (up to jitter well inside the 5 ns seeding
+            // coincidence window), so pattern recognition can actually find
+            // it: seeding pairs station-1/station-2 hits by time and requires
+            // the implied direction to be forward (generate_seeds.cpp).
+            double const z_ref = 0.5 * (stat_z.front() + stat_z.back());
+            double const x_ref = rng.uniform(-300.0, 300.0);
+            double const y_ref = rng.uniform(-300.0, 300.0);
+            double const slope_x = particle.momentum[0] / particle.momentum[2];
+            double const slope_y = particle.momentum[1] / particle.momentum[2];
+            double const track_time = rng.uniform(0.0, 100.0);
 
+            for (auto const detector : detectors) {
                 if (detector == SHiP::detector_id::StrawTubes) {
-                    for (int stat = 0; stat < stat_z.size(); stat++) {
+                    for (double const z : stat_z) {
                         SHiP::SimHit sim_hit;
                         sim_hit.detectorId = static_cast<std::int32_t>(detector);
                         sim_hit.trackId = track;
                         sim_hit.pdgCode = particle.pdgCode;
-                        sim_hit.position = {rng.uniform(-500.0, 500.0), rng.uniform(-500.0, 500.0),
-                                            stat_z[stat]};
+                        sim_hit.position = {x_ref + slope_x * (z - z_ref) + rng.gaussian(0.0, 1.0),
+                                            y_ref + slope_y * (z - z_ref) + rng.gaussian(0.0, 1.0),
+                                            z};
                         sim_hit.momentum = particle.momentum;
                         sim_hit.energyDeposit = rng.uniform(0.0, 0.1);
-                        sim_hit.time = rng.uniform(0.0, 100.0);
+                        sim_hit.time = track_time + rng.uniform(-1.0, 1.0);
                         sim_hit.pathLength = rng.uniform(0.0, 10.0);
                         writers.get<SHiP::SimHit>().write(sim_hit);
                         SHiP::StrawTubesHit hit;
@@ -127,6 +147,8 @@ int main(int argc, char* argv[]) {
                             writers.get<SHiP::TimeDetHit>().write(hit);
                             break;
                         }
+                        default:
+                            break;  // StrawTubes handled above
                     }
                 }
             }
