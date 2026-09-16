@@ -47,10 +47,14 @@ void provide_hit_type(Registrar& m, std::string const& input_file, std::string c
     for (ROOT::NTupleSize_t i = 0; i < n_entries; ++i)
         hits->push_back(view(i));
 
+    // Provide the shared_ptr itself: the collection is read once and shared,
+    // rather than deep-copied into every consumer on every spill.
     m.provide(
          "read_" + suffix,
-         [hits](phlex::data_cell_index const&) -> std::vector<Hit> { return *hits; },
-         phlex::concurrency::serial)
+         [hits](phlex::data_cell_index const&) -> std::shared_ptr<std::vector<Hit>> {
+             return hits;
+         },
+         phlex::concurrency::unlimited)
         .output_product("rntuple_source", phlex::experimental::identifier{suffix}, layer);
 }
 
