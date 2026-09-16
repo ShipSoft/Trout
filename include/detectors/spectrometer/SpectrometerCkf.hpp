@@ -35,11 +35,15 @@
 #include <Acts/Utilities/CalibrationContext.hpp>
 #include <Acts/Utilities/Logger.hpp>
 #include <Acts/Utilities/VectorHelpers.hpp>
+
 #include <SHiP/TrackFitResult.hpp>
-#include <iostream>
+#include <algorithm>
+#include <functional>
 #include <limits>
 #include <memory>
 #include <optional>
+#include <spdlog/spdlog.h>
+#include <utility>
 #include <vector>
 
 // Straight-line seed through two hits on different stations. p0 is a fixed
@@ -120,69 +124,6 @@ selectNearestMeasurement(std::vector<TrackStateProxy>& candidates, bool& isOutli
     return std::pair{candidates.begin(), std::next(candidates.begin())};
 }
 
-// Same field extraction ToyKalmanFitter/Utilities.hpp::fromACTSFitResult
-// does for a single-track KalmanFitter result, generalised to any
-// TrackProxy — CombinatorialKalmanFilter::findTracks returns a vector of
-// them rather than one Result<TrackProxy>.
-template <typename TrackProxy, typename TrackStateContainer>
-SHiP::TrackFitResult trackProxyToFitResult(TrackProxy const& track, TrackStateContainer& states,
-                                           Acts::GeometryContext const& gctx) {
-    SHiP::TrackFitResult result;
-    result.fitStatus = 0;
-    result.chi2 = track.chi2();
-    result.ndf = track.nDoF();
-
-    // Acts::CombinatorialKalmanFilterExtensions has no smoother (only
-    // updater/branchStopper/createTrackStates), so states never have a
-    // "smoothed" component, and track.parameters() is only ever set when a
-    // target surface triggers CKF's isTargetReached branch — which
-    // findTracks() below never configures. Use each state's filtered
-    // (forward-pass) parameters instead, and take the tip's (last-added, so
-    // first seen by visitBackwards) filtered state as the track's summary
-    // parameters.
-    bool haveRefParams = false;
-    states.visitBackwards(track.tipIndex(), [&](auto ts) {
-        if (!ts.typeFlags().isMeasurement())
-            return true;
-        if (!ts.hasCalibrated())
-            return true;
-        if (!ts.hasFiltered())
-            return true;
-
-        auto meas = ts.template calibrated<2>();
-        auto filtered = ts.filtered();
-
-        if (!haveRefParams) {
-            result.qoverp = filtered[Acts::eBoundQOverP];
-            result.phi = filtered[Acts::eBoundPhi];
-            result.theta = filtered[Acts::eBoundTheta];
-            result.time = filtered[Acts::eBoundTime];
-            Acts::Vector3 const direction(std::sin(result.theta) * std::cos(result.phi),
-                                          std::sin(result.theta) * std::sin(result.phi),
-                                          std::cos(result.theta));
-            auto const global = ts.referenceSurface().localToGlobal(
-                gctx, Acts::Vector2{filtered[Acts::eBoundLoc0], filtered[Acts::eBoundLoc1]},
-                direction);
-            result.refLoc = {global.x(), global.y(), global.z()};
-            haveRefParams = true;
-        }
-
-        Acts::Vector2 fitted;
-        fitted << filtered[Acts::eBoundLoc0], filtered[Acts::eBoundLoc1];
-        Acts::Vector2 residual = meas - fitted;
-
-        result.inputMeasurementsX.push_back(meas[0]);
-        result.inputMeasurementsY.push_back(meas[1]);
-        result.fittedMeasurementsX.push_back(fitted[0]);
-        result.fittedMeasurementsY.push_back(fitted[1]);
-        result.residualsX.push_back(residual[0]);
-        result.residualsY.push_back(residual[1]);
-        return true;
-    });
-    result.nMeas = static_cast<std::int32_t>(result.inputMeasurementsX.size());
-    return result;
-}
-
 class SpectrometerCkf {
    public:
     using Trajectory = Acts::VectorMultiTrajectory;
@@ -197,21 +138,6 @@ class SpectrometerCkf {
         : m_geometry{std::move(geometry)},
           m_geoContext(Acts::GeometryContext::dangerouslyDefaultConstruct()),
           m_field{std::move(field)} {
-        // TEMPORARY: sanity check the field magnitude/units — a wildly large
-        // or mis-scaled value here would explain the propagator curling too
-        // tightly to cover the ~2m station spacing within the step budget.
-        {
-            auto cache = m_field->makeCache(m_magContext);
-            Acts::Vector3 const samplePos(0., 0., 90000. * Acts::UnitConstants::mm);
-            auto fieldRes = m_field->getField(samplePos, cache);
-            if (fieldRes.ok())
-                std::cout << "[INFO]: field at " << samplePos.transpose() << " = "
-                          << fieldRes.value().transpose() << " (internal units), "
-                          << (fieldRes.value() / Acts::UnitConstants::T).transpose() << " T\n";
-            else
-                std::cout << "field lookup failed: " << fieldRes.error() << "\n";
-        }
-
         Stepper stepper(m_field);
         Navigator::Config navCfg;
         navCfg.trackingGeometry = m_geometry;
@@ -232,78 +158,11 @@ class SpectrometerCkf {
         m_fitter = std::make_unique<Fitter>(std::move(fitPropagator));
     }
 
-    // Runs the CKF from one seed and appends any tracks found to `out`.
-    void findTracks(Acts::BoundTrackParameters const& seed,
-                    SpectrometerMeasurements const& measurements,
-                    std::vector<SHiP::TrackFitResult>& out) const {
-        // std::cout<<"in a track finding function"<<std::endl;
-        IndexSourceLinkAccessor sourceLinkAccessor;
-        sourceLinkAccessor.container = &measurements.sourceLinks();
-
-        using TrackStateCreatorType =
-            Acts::TrackStateCreator<IndexSourceLinkAccessor::Iterator, TrackContainer>;
-        TrackStateCreatorType trackStateCreator;
-        trackStateCreator.sourceLinkAccessor.template connect<&IndexSourceLinkAccessor::range>(
-            &sourceLinkAccessor);
-        trackStateCreator.calibrator
-            .template connect<&SpectrometerMeasurements::calibrator<Trajectory>>(&measurements);
-        // Cheap nearest-candidate cut (see selectNearestMeasurement above) in
-        // place of the default accept-everything selector, to test whether
-        // unbounded branching on busy stations is what's crashing the CKF.
-        trackStateCreator.measurementSelector.template connect<
-            &selectNearestMeasurement<typename TrackContainer::TrackStateProxy>>();
-
-        Acts::GainMatrixUpdater kfUpdater;
-
-        Acts::CombinatorialKalmanFilterExtensions<TrackContainer> extensions;
-        extensions.updater.template connect<&Acts::GainMatrixUpdater::operator()<Trajectory>>(
-            &kfUpdater);
-        extensions.createTrackStates.template connect<&TrackStateCreatorType::createTrackStates>(
-            &trackStateCreator);
-
-        Acts::PropagatorPlainOptions propOptions(m_geoContext, m_magContext);
-        // Navigation is now confirmed correct (Gen1/Gen3 portal fix in
-        // acts_geometry_provider.cpp), so this no longer needs to guard against
-        // a broken process — just bound legitimate integration through the real
-        // field over the ~11 m station span, which can need more than a
-        // handful of adaptive steps.
-        propOptions.maxSteps = 500;
-        propOptions.pathLimit = 50000. * Acts::UnitConstants::mm;  // stations span ~11 m
-
-        Acts::CombinatorialKalmanFilterOptions<TrackContainer> options(
-            m_geoContext, m_magContext, std::cref(m_calibContext), extensions, propOptions);
-
-        TrackContainerBackend trackStorage;
-        Trajectory trajStorage;
-        TrackContainer tracks(trackStorage, trajStorage);
-
-        auto result = m_ckf->findTracks(seed, options, tracks);
-        if (!result.ok()) {
-            std::cerr << "CKF track finding failed: " << result.error() << "\n";
-            return;
-        }
-        // std::cout << "candidates: " << result->size()
-        //<< " track states total: " << tracks.trackStateContainer().size() << "\n";
-        for (auto const& trackProxy : *result) {
-            // Branches that never got extended with a measurement (no
-            // branchStopper is wired up, so the CKF can still hand these back)
-            // have no track states at all — skip them rather than crash walking
-            // an invalid tip.
-            if (trackProxy.tipIndex() == Acts::kTrackIndexInvalid) {
-                std::cout << "tipIndex issue" << std::endl;
-                continue;
-            }
-            out.push_back(
-                trackProxyToFitResult(trackProxy, tracks.trackStateContainer(), m_geoContext));
-        }
-    }
-
-    // Runs the CKF from one seed, same as findTracks() above, but returns just
-    // the ordered measurement indices each surviving candidate branch picked
-    // up rather than a converted SHiP::TrackFitResult. A TrackProxy can't
-    // outlive the TrackContainer built inside this call, so hit indices are
-    // the only thing that can cross out to a caller — pass them to refit()
-    // below to get a real fit for one candidate.
+    // Runs the CKF from one seed and returns the ordered measurement indices
+    // each surviving candidate branch picked up. A TrackProxy can't outlive
+    // the TrackContainer built inside this call, so hit indices are the only
+    // thing that can cross out to a caller — pass them to refit() below to
+    // get a real fit for one candidate.
     std::vector<std::vector<ActsExamples::Index>> findCandidateHits(
         Acts::BoundTrackParameters const& seed,
         SpectrometerMeasurements const& measurements) const {
@@ -319,6 +178,9 @@ class SpectrometerCkf {
             &sourceLinkAccessor);
         trackStateCreator.calibrator
             .template connect<&SpectrometerMeasurements::calibrator<Trajectory>>(&measurements);
+        // Cheap nearest-candidate cut (see selectNearestMeasurement above) in
+        // place of the default accept-everything selector — unbounded
+        // branching on busy stations is otherwise combinatorially explosive.
         trackStateCreator.measurementSelector.template connect<
             &selectNearestMeasurement<typename TrackContainer::TrackStateProxy>>();
 
@@ -331,8 +193,10 @@ class SpectrometerCkf {
             &trackStateCreator);
 
         Acts::PropagatorPlainOptions propOptions(m_geoContext, m_magContext);
+        // Bound legitimate integration through the real field over the ~11 m
+        // station span, which can need more than a handful of adaptive steps.
         propOptions.maxSteps = 500;
-        propOptions.pathLimit = 50000. * Acts::UnitConstants::mm;
+        propOptions.pathLimit = 50000. * Acts::UnitConstants::mm;  // stations span ~11 m
 
         Acts::CombinatorialKalmanFilterOptions<TrackContainer> options(
             m_geoContext, m_magContext, std::cref(m_calibContext), extensions, propOptions);
@@ -343,10 +207,14 @@ class SpectrometerCkf {
 
         auto result = m_ckf->findTracks(seed, options, tracks);
         if (!result.ok()) {
-            std::cerr << "CKF track finding failed: " << result.error() << "\n";
+            spdlog::warn("CKF track finding failed: {}", result.error().message());
             return out;
         }
         for (auto const& trackProxy : *result) {
+            // Branches that never got extended with a measurement (no
+            // branchStopper is wired up, so the CKF can still hand these back)
+            // have no track states at all — skip them rather than crash
+            // walking an invalid tip.
             if (trackProxy.tipIndex() == Acts::kTrackIndexInvalid)
                 continue;
             std::vector<ActsExamples::Index> hits;
@@ -360,7 +228,10 @@ class SpectrometerCkf {
                 // was fixed to actually set it.
                 if (!ts.hasUncalibratedSourceLink())
                     return true;
-                auto const& isl = ts.getUncalibratedSourceLink().template get<IndexSourceLink>();
+                // getUncalibratedSourceLink() returns the SourceLink by
+                // value — copy the payload out rather than binding a
+                // reference into the temporary.
+                auto const isl = ts.getUncalibratedSourceLink().template get<IndexSourceLink>();
                 hits.push_back(isl.index());
                 return true;
             });

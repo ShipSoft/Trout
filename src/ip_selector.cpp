@@ -1,11 +1,23 @@
+// SPDX-FileCopyrightText: 2026 CERN for the benefit of the SHiP Collaboration
+//
+// SPDX-License-Identifier: LGPL-3.0-or-later
+
+// ip_selector.cpp — converts simulated particles to reconstructed particles
+// with an impact-parameter estimate attached (currently with respect to the
+// origin; a real primary-vertex estimate replaces that later).
+
 #include "phlex/core/product_selector.hpp"
 #include "phlex/module.hpp"
 
 #include <SHiP/RecParticle.hpp>
 #include <SHiP/SimParticle.hpp>
-#include <iostream>
+#include <array>
+#include <cmath>
+#include <memory>
+#include <string>
+#include <vector>
 
-using namespace phlex;
+namespace {
 
 double calculateIP(const std::array<double, 3>& r, const std::array<double, 3>& p) {
     // placeholder for impact parameter - calculated with respect to the origin
@@ -21,22 +33,27 @@ double calculateIP(const std::array<double, 3>& r, const std::array<double, 3>& 
     return std::sqrt((cx * cx + cy * cy + cz * cz) / p2);
 }
 
+}  // namespace
+
 PHLEX_REGISTER_ALGORITHMS(m, config) {
     auto const layer = config.get<std::string>("layer");
 
-    // Identity transform: takes "value" in, produces "processed_value" out
     m.transform(
          "ip_selector",
-         [](std::vector<SHiP::SimParticle> const& ip) -> std::vector<SHiP::RecParticle> {
+         [](std::shared_ptr<std::vector<SHiP::SimParticle>> const& ip)
+             -> std::vector<SHiP::RecParticle> {
              std::vector<SHiP::RecParticle> op;
-             for (auto& p : ip) {
+             if (!ip)
+                 return op;
+             op.reserve(ip->size());
+             for (auto const& p : *ip) {
                  op.emplace_back(SHiP::fromSimParticle(p));
                  op.back().ipPV = calculateIP(p.vertex, p.momentum);
              }
              return op;
          },
-         concurrency::unlimited)
-        .input_family(product_selector{
+         phlex::concurrency::unlimited)
+        .input_family(phlex::product_selector{
             .creator = "rntuple_source", .layer = layer, .suffix = "sim_particles"})
-        .output_product_suffixes("processed_value");
+        .output_product_suffixes("rec_particles");
 }

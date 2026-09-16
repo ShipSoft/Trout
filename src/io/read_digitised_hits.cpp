@@ -32,15 +32,13 @@
 #include <string>
 #include <vector>
 
-using namespace phlex;
-
 namespace {
 
 template <typename Hit, typename Registrar>
 void provide_hit_type(Registrar& m, std::string const& input_file, std::string const& ntuple_name,
                       std::string const& suffix, phlex::experimental::identifier const& layer) {
-    auto reader = std::shared_ptr<ROOT::RNTupleReader>(
-        ROOT::RNTupleReader::Open(ntuple_name, input_file).release());
+    std::shared_ptr<ROOT::RNTupleReader> reader =
+        ROOT::RNTupleReader::Open(ntuple_name, input_file);
     auto view = reader->GetView<Hit>("hit");
 
     auto hits = std::make_shared<std::vector<Hit>>();
@@ -50,8 +48,9 @@ void provide_hit_type(Registrar& m, std::string const& input_file, std::string c
         hits->push_back(view(i));
 
     m.provide(
-         "read_" + suffix, [hits](data_cell_index const&) -> std::vector<Hit> { return *hits; },
-         concurrency::serial)
+         "read_" + suffix,
+         [hits](phlex::data_cell_index const&) -> std::vector<Hit> { return *hits; },
+         phlex::concurrency::serial)
         .output_product("rntuple_source", phlex::experimental::identifier{suffix}, layer);
 }
 

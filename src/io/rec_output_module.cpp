@@ -40,7 +40,7 @@
 #include <SHiP/detectors/UBTHit.hpp>
 #include <cstdint>
 #include <exception>
-#include <filesystem>
+#include <filesystem>  // NOLINT(build/c++17)
 #include <iterator>
 #include <memory>
 #include <mutex>
@@ -55,9 +55,9 @@
 
 namespace {
 
-using HistD = RHist<double>;
-using FillerD = RHistConcurrentFiller<double>;
-using ContextD = RHistFillContext<double>;
+using HistD = ROOT::Experimental::RHist<double>;
+using FillerD = ROOT::Experimental::RHistConcurrentFiller<double>;
+using ContextD = ROOT::Experimental::RHistFillContext<double>;
 
 std::shared_ptr<HistD> make_hist(int nbins, double low, double high) {
     return std::make_shared<HistD>(static_cast<std::uint64_t>(nbins), std::make_pair(low, high));
@@ -171,7 +171,6 @@ PHLEX_REGISTER_ALGORITHMS(m, config) {
     auto rntuple_file =
         config.get<std::string>("rntuple_file", std::string{"reconstructed_objects.root"});
     auto histo_file = config.get<std::string>("histo_file", std::string{"reco_validation.root"});
-    auto layer = config.get<std::string>("layer", std::string{"spill"});
     auto isSim = config.get<bool>("simulation", false);
 
     if (mode != "reco" && mode != "noop")
