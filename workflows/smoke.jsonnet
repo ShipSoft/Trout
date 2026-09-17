@@ -18,11 +18,11 @@ local simulation = true;
      },
     tracking_geometry: {
       cpp: 'acts_geometry_provider',
-      db_file: '../geometry/my_ship_geometry.db',
+      db_file: 'smoke_geometry.db',
     },
     spectrometer_field: {
       cpp: 'acts_field_provider',
-      field_file: 'spectromoter_field.cvf',
+      field_file: 'smoke_field.cvf',
     },
   },
 
