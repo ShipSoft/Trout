@@ -83,6 +83,9 @@ class ShipActsFieldProvider final : public Acts::MagneticFieldProvider {
         } catch (std::exception const& e) {
             warnOnce(e.what());
             return Result::failure(Acts::MagneticFieldError::OutOfBounds);
+        } catch (...) {
+            warnOnce("unknown exception from evaluator");
+            return Result::failure(Acts::MagneticFieldError::OutOfBounds);
         }
 
         const double bx_T = b[0].numerical_value_in(ship::units::tesla);
