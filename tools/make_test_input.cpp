@@ -22,6 +22,7 @@
 #include <SHiP/detectors/UBTHit.hpp>
 #include <SHiP/detectors/detector_id.hpp>
 #include <array>
+#include <cstddef>
 #include <cstdint>
 #include <cstdio>
 #include <exception>
@@ -43,9 +44,13 @@ int main(int argc, char* argv[]) {
     std::string const filename = argc > 1 ? argv[1] : "smoke_input.root";
     unsigned long n_events = 10UL;
     if (argc > 2) {
+        std::size_t consumed = 0;
         try {
-            n_events = std::stoul(argv[2]);
+            n_events = std::stoul(argv[2], &consumed);
         } catch (std::exception const&) {
+            consumed = 0;
+        }
+        if (consumed == 0 || argv[2][consumed] != '\0') {
             std::fprintf(stderr, "invalid event count: %s\n", argv[2]);
             return 1;
         }
