@@ -12,8 +12,11 @@
 #include "HistoFileService.hpp"
 #include "TFile.h"
 #include "TH1D.h"
-#include "detectors/multiplicity_histogrammer.hpp"
+#include "detectors/calorimeter/calorimeter_histogrammer.hpp"
 #include "detectors/spectrometer/SpectrometerHistogrammer.hpp"
+#include "detectors/surround_tagger/surround_tagger_histogrammer.hpp"
+#include "detectors/timing_detector/timing_detector_histogrammer.hpp"
+#include "detectors/upstream_tagger/upstream_tagger_histogrammer.hpp"
 #include "io/typed_rntuple_writer.hpp"
 #include "phlex/core/product_selector.hpp"
 #include "phlex/module.hpp"
@@ -251,31 +254,21 @@ PHLEX_REGISTER_ALGORITHMS(m, config) {
     register_writer(spectrometer_histo, "validate_spectrometer", &SpectrometerHistogrammer::observe,
                     selector("fit_seed", "seed", "track_fit_result"));
 
-    auto ubt_histo = m.make<MultiplicityHistogrammer<SHiP::UBTHit>>(
-        histo_file_service, "h_upstream_tagger_multiplicity",
-        "Upstream tagger hits per event;N;Events");
-    register_writer(ubt_histo, "validate_upstream_tagger",
-                    &MultiplicityHistogrammer<SHiP::UBTHit>::observe,
+    auto ubt_histo = m.make<UpstreamTaggerHistogrammer>(histo_file_service);
+    register_writer(ubt_histo, "validate_upstream_tagger", &UpstreamTaggerHistogrammer::observe,
                     selector("upstream_tagger_reco", "spill", "upstream_tagger_reco"));
 
-    auto sbt_histo = m.make<MultiplicityHistogrammer<SHiP::SBTHit>>(
-        histo_file_service, "h_surround_tagger_multiplicity",
-        "Surround tagger hits per event;N;Events");
-    register_writer(sbt_histo, "validate_surround_tagger",
-                    &MultiplicityHistogrammer<SHiP::SBTHit>::observe,
+    auto sbt_histo = m.make<SurroundTaggerHistogrammer>(histo_file_service);
+    register_writer(sbt_histo, "validate_surround_tagger", &SurroundTaggerHistogrammer::observe,
                     selector("surround_tagger_reco", "spill", "surround_tagger_reco"));
 
-    auto calo_histo = m.make<MultiplicityHistogrammer<SHiP::CaloHit>>(
-        histo_file_service, "h_calorimeter_multiplicity", "Calorimeter hits per event;N;Events");
-    register_writer(calo_histo, "validate_calorimeter",
-                    &MultiplicityHistogrammer<SHiP::CaloHit>::observe,
+    auto calo_histo = m.make<CalorimeterHistogrammer>(histo_file_service);
+    register_writer(calo_histo, "validate_calorimeter", &CalorimeterHistogrammer::observe,
                     selector("calorimeter_reco", "spill", "calorimeter_reco"));
 
-    auto time_det_histo = m.make<MultiplicityHistogrammer<SHiP::TimeDetHit>>(
-        histo_file_service, "h_timing_detector_multiplicity",
-        "Timing detector hits per event;N;Events");
+    auto time_det_histo = m.make<TimingDetectorHistogrammer>(histo_file_service);
     register_writer(time_det_histo, "validate_timing_detector",
-                    &MultiplicityHistogrammer<SHiP::TimeDetHit>::observe,
+                    &TimingDetectorHistogrammer::observe,
                     selector("timing_detector_reco", "spill", "timing_detector_reco"));
 
     if (isSim) {

@@ -3,9 +3,11 @@
 // SPDX-License-Identifier: LGPL-3.0-or-later
 
 // multiplicity_histogrammer.hpp — per-event hit-multiplicity validation
-// histogram, shared by the subdetectors whose monitoring is (so far) just a
-// multiplicity count. A detector that grows richer monitoring gets its own
-// histogrammer class instead (see SpectrometerHistogrammer).
+// histogram. Not instantiated directly: it is the base the per-subdetector
+// histogrammers derive from while their monitoring is (so far) just a
+// multiplicity count, so each detector keeps a named class and header of its
+// own to grow into. A detector that outgrows this drops the base class and
+// books its own histograms (see SpectrometerHistogrammer).
 
 #pragma once
 
@@ -40,6 +42,11 @@ class MultiplicityHistogrammer {
         fill_contexts_.clear();
         file_service_->put(hist_name_.c_str(), hist_title_.c_str(), *h_multiplicity_);
     }
+
+   protected:
+    // For subclasses booking histograms of their own: Put() them into this
+    // file from the subclass destructor, which runs before this one.
+    std::shared_ptr<HistoFileService> const& file_service() const { return file_service_; }
 
    private:
     using HistD = ROOT::Experimental::RHist<double>;

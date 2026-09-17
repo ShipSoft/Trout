@@ -132,10 +132,18 @@ target_include_directories(
     PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/include"
 )
 
+# Placeholder per-subdetector reconstruction plugins. Each is an identity
+# transform registered through the shared identity_reco.hpp helper, hence the
+# include directory below; real reconstruction replaces the body per detector.
 add_library(
     upstream_tagger_reco
     MODULE
     src/detectors/upstream_tagger/upstream_tagger_reco.cpp
+    include/detectors/identity_reco.hpp
+)
+target_include_directories(
+    upstream_tagger_reco
+    PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/include"
 )
 target_link_libraries(
     upstream_tagger_reco
@@ -146,6 +154,11 @@ add_library(
     surround_tagger_reco
     MODULE
     src/detectors/surround_tagger/surround_tagger_reco.cpp
+    include/detectors/identity_reco.hpp
+)
+target_include_directories(
+    surround_tagger_reco
+    PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/include"
 )
 target_link_libraries(
     surround_tagger_reco
@@ -156,6 +169,11 @@ add_library(
     calorimeter_reco
     MODULE
     src/detectors/calorimeter/calorimeter_reco.cpp
+    include/detectors/identity_reco.hpp
+)
+target_include_directories(
+    calorimeter_reco
+    PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/include"
 )
 target_link_libraries(
     calorimeter_reco
@@ -166,6 +184,11 @@ add_library(
     timing_detector_reco
     MODULE
     src/detectors/timing_detector/timing_detector_reco.cpp
+    include/detectors/identity_reco.hpp
+)
+target_include_directories(
+    timing_detector_reco
+    PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/include"
 )
 target_link_libraries(
     timing_detector_reco
@@ -173,7 +196,19 @@ target_link_libraries(
 )
 
 # Reconstruction output module plugin
-add_library(rec_output_module MODULE src/io/rec_output_module.cpp)
+add_library(
+    rec_output_module
+    MODULE
+    src/io/rec_output_module.cpp
+    include/HistoFileService.hpp
+    include/detectors/multiplicity_histogrammer.hpp
+    include/detectors/calorimeter/calorimeter_histogrammer.hpp
+    include/detectors/spectrometer/SpectrometerHistogrammer.hpp
+    include/detectors/surround_tagger/surround_tagger_histogrammer.hpp
+    include/detectors/timing_detector/timing_detector_histogrammer.hpp
+    include/detectors/upstream_tagger/upstream_tagger_histogrammer.hpp
+    include/io/typed_rntuple_writer.hpp
+)
 target_include_directories(
     rec_output_module
     PRIVATE
