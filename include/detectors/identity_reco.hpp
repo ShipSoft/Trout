@@ -13,6 +13,7 @@
 #include "phlex/core/product_selector.hpp"
 #include "phlex/module.hpp"
 
+#include <memory>
 #include <string>
 #include <vector>
 
@@ -23,7 +24,9 @@ void register_identity_reco(Registrar& m, phlex::configuration const& config,
 
     m.transform(
          name,
-         [](std::vector<Hit> const& hits) -> std::vector<Hit> { return hits; },
+         [](std::shared_ptr<std::vector<Hit>> const& hits) -> std::vector<Hit> {
+             return hits ? *hits : std::vector<Hit>{};
+         },
          phlex::concurrency::unlimited)
         .input_family(
             phlex::product_selector{.creator = "rntuple_source",
