@@ -1,21 +1,11 @@
-#include "phlex/core/product_selector.hpp"
-#include "phlex/module.hpp"
+// SPDX-FileCopyrightText: 2026 CERN for the benefit of the SHiP Collaboration
+//
+// SPDX-License-Identifier: LGPL-3.0-or-later
+
+#include "detectors/identity_reco.hpp"
 
 #include <SHiP/detectors/CaloHit.hpp>
-#include <iostream>
-using namespace phlex;
 
 PHLEX_REGISTER_ALGORITHMS(m, config) {
-    auto const layer = config.get<std::string>("layer");
-
-    // Identity transform: takes "value" in, produces "value" out
-    m.transform(
-         "calorimeter_reco",
-         [](std::vector<SHiP::CaloHit> const& particles) -> std::vector<SHiP::CaloHit> {
-             return particles;
-         },
-         concurrency::unlimited)
-        .input_family(product_selector{
-            .creator = "rntuple_source", .layer = layer, .suffix = "calorimeter_hits"})
-        .output_product_suffixes("calorimeter_reco");
+    register_identity_reco<SHiP::CaloHit>(m, config, "calorimeter_reco", "calorimeter_hits");
 }
