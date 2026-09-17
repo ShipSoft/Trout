@@ -22,7 +22,7 @@ local simulation = true;
     },
     spectrometer_field: {
       cpp: 'acts_field_provider',
-      field_file: 'smoke_field.cvf',
+      field_file: './smoke_field.cvf',
     },
   },
 
