@@ -14,7 +14,7 @@ Usage: scripts/release.sh <version>
   <version>   semver without leading 'v', e.g. 0.2.0
 
 The script must be run from a clean working tree. It will:
-  1. bump the VERSION line in CMakeLists.txt
+  1. bump the version in the project() call in CMakeLists.txt
   2. bump version and date-released in CITATION.cff (if present)
   3. regenerate CHANGELOG.md with `git cliff --tag v<version>`
   4. create commit `chore(release): v<version>`
@@ -66,14 +66,15 @@ if git rev-parse --verify --quiet "refs/tags/${TAG}" >/dev/null; then
 fi
 
 CMAKE_FILE="CMakeLists.txt"
-if ! grep -qE '^[[:space:]]*VERSION[[:space:]]+[0-9]+\.[0-9]+\.[0-9]+' "${CMAKE_FILE}"; then
-    echo "error: could not find VERSION line in ${CMAKE_FILE}" >&2
+# The version lives inside the project() call: project(trout VERSION x.y.z ...)
+if ! grep -qE '^[[:space:]]*project\([^)]*VERSION[[:space:]]+[0-9]+\.[0-9]+\.[0-9]+' "${CMAKE_FILE}"; then
+    echo "error: could not find a project() VERSION in ${CMAKE_FILE}" >&2
     exit 70
 fi
 
-sed -i -E "s/^([[:space:]]*VERSION[[:space:]]+)[0-9]+\.[0-9]+\.[0-9]+/\1${VERSION}/" "${CMAKE_FILE}"
+sed -i -E "s/^([[:space:]]*project\([^)]*VERSION[[:space:]]+)[0-9]+\.[0-9]+\.[0-9]+/\1${VERSION}/" "${CMAKE_FILE}"
 
-if ! grep -qE "^[[:space:]]*VERSION[[:space:]]+${VERSION//./\\.}([[:space:]]|$)" "${CMAKE_FILE}"; then
+if ! grep -qE "^[[:space:]]*project\([^)]*VERSION[[:space:]]+${VERSION//./\\.}([[:space:]]|\))" "${CMAKE_FILE}"; then
     echo "error: failed to update VERSION in ${CMAKE_FILE}" >&2
     git checkout -- "${CMAKE_FILE}"
     exit 70
