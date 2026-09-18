@@ -9,4 +9,8 @@ on:
   workflow_dispatch:
 jobs:
   docs:
+    permissions:
+      contents: read
+      pages: write
+      id-token: write
     uses: ShipSoft/.github/.github/workflows/doxygen-pages.yml@main
