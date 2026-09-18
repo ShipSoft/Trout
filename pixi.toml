@@ -94,15 +94,17 @@ sed -i 's#"$PREK" hook-impl#pixi run -e lint prek hook-impl#' "$hooks/commit-msg
 '''
 
 # --- Multi-package development ------------------------------------------
-# Build shipdatamodel from a sibling checkout instead of a released conda
-# package: `pixi run -e dev build`/`install`/`test`/`phlex ...`. Requires
-# ../data-model to exist (its pixi.toml packages it as a pixi-build source
-# dependency).
-# Do NOT commit this block enabled together with pixi.lock changes it causes
-# if that leaves the committed lock unresolvable without the sibling checkout
-# — check `git diff pixi.lock` before committing.
+# The dev environment adds a debugger to the default one. It can also build
+# shipdatamodel from a sibling checkout instead of the released conda
+# package: uncomment the dependency below (../data-model has to exist and to
+# package itself as a pixi-build source dependency), run `pixi lock`, then
+# `pixi run -e dev build`/`install`/`test`/`phlex ...`.
+#
+# Leave it commented out in whatever you commit. A lock file that records the
+# source dependency cannot be resolved without the sibling checkout, which
+# breaks `pixi install --locked` for every environment, not just dev.
 [feature.dev.dependencies]
-shipdatamodel = { path = "../data-model" }
+# shipdatamodel = { path = "../data-model" }
 gdb = "*"
 
 [environments]
