@@ -272,6 +272,11 @@ class SpectrometerCkf {
 
         Acts::CombinatorialKalmanFilterOptions<TrackContainer> options(
             m_geoContext, m_magContext, std::cref(m_calibContext), extensions, propOptions);
+        // Station material's Ar/Z (acts_geometry_provider.cpp) are
+        // placeholders, not verified for the Bethe-Bloch energy-loss term —
+        // multipleScattering (left at its true default) doesn't depend on
+        // them, only X0. See buildStationMaterialSlab's comment.
+        options.energyLoss = false;
 
         TrackContainerBackend trackStorage;
         Trajectory trajStorage;
@@ -336,6 +341,8 @@ class SpectrometerCkf {
 
         Acts::CombinatorialKalmanFilterOptions<TrackContainer> options(
             m_geoContext, m_magContext, std::cref(m_calibContext), extensions, propOptions);
+        // See the matching comment in findTracks() above.
+        options.energyLoss = false;
 
         TrackContainerBackend trackStorage;
         Trajectory trajStorage;
@@ -419,6 +426,8 @@ class SpectrometerCkf {
         Acts::KalmanFitterOptions<Trajectory> options(m_geoContext, m_magContext,
                                                       std::cref(m_calibContext), ext, propOptions,
                                                       &seed.referenceSurface());
+        // See the matching comment in findTracks() above.
+        options.energyLoss = false;
 
         Acts::VectorTrackContainer trackStorage;
         Trajectory trajStorage;

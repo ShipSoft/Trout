@@ -27,11 +27,13 @@
 #include <G4GeometryManager.hh>
 #include <G4LogicalVolume.hh>
 #include <G4LogicalVolumeStore.hh>
+#include <G4Material.hh>
 #include <G4NavigationHistory.hh>
 #include <G4PVPlacement.hh>
 #include <G4PhysicalVolumeStore.hh>
 #include <G4RegionStore.hh>
 #include <G4SolidStore.hh>
+#include <G4Tubs.hh>
 #include <G4VPhysicalVolume.hh>
 #include <G4VSolid.hh>
 
@@ -45,6 +47,9 @@
 #include <Acts/Geometry/StaticBlueprintNode.hpp>
 #include <Acts/Geometry/TrackingGeometry.hpp>
 #include <Acts/Geometry/TrackingVolume.hpp>
+#include <Acts/Material/HomogeneousSurfaceMaterial.hpp>
+#include <Acts/Material/Material.hpp>
+#include <Acts/Material/MaterialSlab.hpp>
 #include <Acts/Navigation/TryAllNavigationPolicy.hpp>
 #include <Acts/Surfaces/PlaneSurface.hpp>
 #include <Acts/Surfaces/RectangleBounds.hpp>
@@ -92,6 +97,84 @@ std::optional<StationPlacement> find_station(G4VPhysicalVolume* pv, std::string 
     return std::nullopt;
 }
 
+// Depth-first search for a physical volume by exact name, anywhere below
+// `pv`. Simpler than find_station above: only the volume's own solid/material
+// matter here, not its placement, so no transform bookkeeping is needed.
+G4VPhysicalVolume* find_volume(G4VPhysicalVolume* pv, std::string const& target_name) {
+    if (pv->GetName() == target_name)
+        return pv;
+    auto* lv = pv->GetLogicalVolume();
+    for (int i = 0; i < lv->GetNoDaughters(); ++i) {
+        if (auto* found = find_volume(lv->GetDaughter(i), target_name))
+            return found;
+    }
+    return nullptr;
+}
+
+// Effective per-station material budget for multiple scattering. A track
+// crossing one station's active (straw) region passes through 2 straws per
+// stereo view (one per staggered sub-layer, see TrackersFactory::buildView)
+// across the station's 4 views — 8 straws total (see geometry/subsystems/
+// Trackers/README.md), each entered and exited through its Mylar wall (2
+// wall-thicknesses) plus one ArCO2_70_30 gas column. The view frame is a
+// hollow rectangle bordering the aperture (TrackersFactory::buildFrame), so
+// an on-axis track crossing the straws never touches its aluminium —
+// deliberately not included.
+//
+// Only X0/L0 come from the real G4Material here. Ar/Z below are
+// placeholders: Acts::Material treats Ar<=0 as vacuum and skips all
+// interaction (Material::isVacuum()), so a positive value is required, but
+// multiple scattering (the Highland formula) depends on X0 alone — Ar/Z only
+// feed the energy-loss (Bethe-Bloch) term, which SpectrometerCkf.hpp
+// explicitly disables (energyLoss = false) rather than risk an unverified
+// conversion: G4Material::GetZ()/GetA() throw for compound materials (both
+// Mylar and ArCO2_70_30 have more than one element), and
+// Acts::Material::fromMassDensity's own header warns its native-unit mass
+// density is easy to get orders of magnitude wrong — not something caught by
+// a compiler, and not verified here since this hasn't been built/run.
+Acts::MaterialSlab buildStationMaterialSlab(G4VPhysicalVolume* world_pv) {
+    constexpr int kStrawsPerStation = 8;  // 4 views x 2 staggered sub-layers
+
+    auto* wallPv = find_volume(world_pv, "/SHiP/trackers/straw_wall");
+    auto* gasPv = find_volume(world_pv, "/SHiP/trackers/straw_gas");
+    if (!wallPv || !gasPv)
+        throw std::runtime_error(
+            "acts_geometry_provider: could not find straw_wall/straw_gas in geometry");
+
+    auto* wallSolid = dynamic_cast<G4Tubs const*>(wallPv->GetLogicalVolume()->GetSolid());
+    auto* gasSolid = dynamic_cast<G4Tubs const*>(gasPv->GetLogicalVolume()->GetSolid());
+    if (!wallSolid || !gasSolid)
+        throw std::runtime_error(
+            "acts_geometry_provider: straw_wall/straw_gas are not G4Tubs as expected");
+
+    double const wallThickness = wallSolid->GetOuterRadius() - gasSolid->GetOuterRadius();
+    double const gasPathLength = 2.0 * gasSolid->GetOuterRadius();  // straight-through diameter
+
+    auto const* mylar = wallPv->GetLogicalVolume()->GetMaterial();
+    auto const* gas = gasPv->GetLogicalVolume()->GetMaterial();
+
+    double const tMylar = kStrawsPerStation * 2.0 * wallThickness;  // in, then out, per straw
+    double const tGas = kStrawsPerStation * gasPathLength;
+    double const tTotal = tMylar + tGas;
+
+    // Series combination for thin scatterers: 1/X0_eff = sum(t_i / X0_i).
+    double const x0 = tTotal / (tMylar / mylar->GetRadlen() + tGas / gas->GetRadlen());
+    double const l0 = tTotal / (tMylar / mylar->GetNuclearInterLength() +
+                               tGas / gas->GetNuclearInterLength());
+
+    // See the function comment above — placeholders, inert while energyLoss
+    // is off.
+    constexpr float kPlaceholderAr = 14.f;
+    constexpr float kPlaceholderZ = 7.f;
+    constexpr float kPlaceholderMassRho = 1.f;
+
+    Acts::Material const material = Acts::Material::fromMassDensity(
+        static_cast<float>(x0), static_cast<float>(l0), kPlaceholderAr, kPlaceholderZ,
+        kPlaceholderMassRho);
+
+    return Acts::MaterialSlab(material, static_cast<float>(tTotal));
+}
+
 std::shared_ptr<Acts::TrackingGeometry> build_tracking_geometry(G4VPhysicalVolume* world_pv) {
     std::array<StationPlacement, kNumStations> stations;
 
@@ -128,6 +211,11 @@ std::shared_ptr<Acts::TrackingGeometry> build_tracking_geometry(G4VPhysicalVolum
     auto worldVolume = std::make_unique<Acts::TrackingVolume>(containerTrf, containerBounds,
                                                               "SpectrometerStations");
 
+    // Same straw/view/sub-layer structure at every station, so one slab
+    // covers all 4 surfaces.
+    auto stationMaterial =
+        std::make_shared<Acts::HomogeneousSurfaceMaterial>(buildStationMaterialSlab(world_pv));
+
     for (int i = 0; i < kNumStations; ++i) {
         auto const& s = stations[i];
         Acts::Transform3 trf = Acts::Transform3::Identity();
@@ -146,6 +234,7 @@ std::shared_ptr<Acts::TrackingGeometry> build_tracking_geometry(G4VPhysicalVolum
         // before ever attempting createTrackStates. Without this, the CKF
         // treats every station as non-sensitive and never calibrates a hit.
         surface->assignIsSensitive(true);
+        surface->assignSurfaceMaterial(stationMaterial);
 
         worldVolume->addSurface(surface);
     }
