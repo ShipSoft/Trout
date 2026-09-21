@@ -19,7 +19,7 @@
 #include <cstdint>
 #include <numbers>
 
-namespace Shannon {
+namespace Trout {
 
 class PhiloxRng {
    public:
@@ -82,4 +82,4 @@ class PhiloxRng {
     int idx_ = 4;
 };
 
-}  // namespace Shannon
+}  // namespace Trout

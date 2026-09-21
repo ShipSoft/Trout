@@ -1,9 +1,14 @@
+// SPDX-FileCopyrightText: 2026 CERN for the benefit of the SHiP Collaboration
+//
+// SPDX-License-Identifier: LGPL-3.0-or-later
+
 #pragma once
 
 #include <Acts/Definitions/Algebra.hpp>
 #include <Acts/EventData/VectorMultiTrajectory.hpp>
 #include <Acts/EventData/VectorTrackContainer.hpp>
 #include <Acts/Geometry/GeometryContext.hpp>
+
 #include <SHiP/TrackFitResult.hpp>
 #include <array>
 #include <cmath>

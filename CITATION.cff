@@ -9,12 +9,11 @@ type: software
 license: LGPL-3.0-or-later
 authors:
   - name: The SHiP Collaboration
-abstract: Phlex-based simulation framework for the SHiP experiment, providing Pythia8 event generation, Geant4 detector simulation, and RNTuple output.
+abstract: Phlex-based reconstruction framework for the SHiP experiment, providing ACTS-based spectrometer track finding and fitting, per-subdetector reconstruction, and RNTuple output.
 keywords:
   - physics
   - particle-physics
-  - simulation
-  - detector-simulation
+  - reconstruction
+  - tracking
   - SHiP
-  - Geant4
-  - Pythia8
+  - ACTS

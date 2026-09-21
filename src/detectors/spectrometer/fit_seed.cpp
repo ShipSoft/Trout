@@ -11,8 +11,6 @@
 #include <cstddef>
 #include <vector>
 
-using namespace phlex;
-
 namespace {
 
 // The spectrometer has 4 stations — demand a candidate use all of them
@@ -46,8 +44,8 @@ void register_fit_seed(ModuleProxy& m, phlex::experimental::identifier const& se
              }
              return results;
          },
-         concurrency::unlimited)
-        .input_family(product_selector{
+         phlex::concurrency::unlimited)
+        .input_family(phlex::product_selector{
             .creator = "generate_seeds", .layer = seedLayer, .suffix = "seed_hit_pair"})
         .output_product_suffixes("track_fit_result");
 }

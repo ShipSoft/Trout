@@ -9,12 +9,11 @@
 #include "detectors/spectrometer/SpillContext.hpp"
 
 #include <Acts/Geometry/GeometryContext.hpp>
+
 #include <SHiP/RecHit.hpp>
 #include <SHiP/detectors/StrawTubesHit.hpp>
 #include <memory>
 #include <vector>
-
-using namespace phlex;
 
 void register_prepare_measurements(ModuleProxy& m, phlex::experimental::identifier const& layer) {
     m.transform(
@@ -37,11 +36,13 @@ void register_prepare_measurements(ModuleProxy& m, phlex::experimental::identifi
              ctx->ckf = std::make_shared<SpectrometerCkf>(detector->trackingGeometry, field->field);
              return ctx;
          },
-         concurrency::unlimited)
+         phlex::concurrency::unlimited)
         .input_family(
-            product_selector{
+            phlex::product_selector{
                 .creator = "rntuple_source", .layer = layer, .suffix = "straw_tubes_hits"},
-            product_selector{.creator = "tracking_geometry", .layer = "job", .suffix = "detector"},
-            product_selector{.creator = "spectrometer_field", .layer = "job", .suffix = "field"})
+            phlex::product_selector{
+                .creator = "tracking_geometry", .layer = "job", .suffix = "detector"},
+            phlex::product_selector{
+                .creator = "spectrometer_field", .layer = "job", .suffix = "field"})
         .output_product_suffixes("spill_context");
 }

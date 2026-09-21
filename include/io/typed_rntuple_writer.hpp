@@ -10,15 +10,11 @@
 
 #include "TFile.h"
 
-#include <ROOT/RHist.hxx>
-#include <ROOT/RHistConcurrentFiller.hxx>
-#include <ROOT/RHistFillContext.hxx>
 #include <ROOT/RNTupleFillContext.hxx>
 #include <ROOT/RNTupleFillStatus.hxx>
 #include <ROOT/RNTupleModel.hxx>
 #include <ROOT/RNTupleParallelWriter.hxx>
 #include <tuple>
-#include <type_traits>
 
 #include <SHiP/SimHit.hpp>
 #include <SHiP/SimParticle.hpp>
@@ -29,14 +25,15 @@
 #include <SHiP/detectors/TimeDetHit.hpp>
 #include <SHiP/detectors/UBTHit.hpp>
 #include <algorithm>
+#include <cstddef>
+#include <memory>
+#include <mutex>
 #include <oneapi/tbb/enumerable_thread_specific.h>
-
-using ROOT::REntry;
-using ROOT::RNTupleModel;
-using ROOT::RNTupleParallelWriter;
-using ROOT::Experimental::RHist;
-using ROOT::Experimental::RHistConcurrentFiller;
-using ROOT::Experimental::RHistFillContext;
+#include <optional>
+#include <stdexcept>
+#include <string>
+#include <string_view>
+#include <vector>
 
 using SpectrometerTracks = std::vector<SHiP::TrackFitResult>;
 using UpstreamTaggerObjects = std::vector<SHiP::UBTHit>;
@@ -76,8 +73,6 @@ class RNTupleFileService {
     std::mutex& mutex() { return mutex_; }
 
    private:
-    // Keep this before file_, or explicitly destroy the writers before this
-    // service is destroyed.
     std::unique_ptr<TFile> file_;
     std::mutex mutex_;
 };

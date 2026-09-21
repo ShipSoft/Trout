@@ -8,3 +8,15 @@ path = "**"
 precedence = "aggregate"
 SPDX-FileCopyrightText = "CERN for the benefit of the SHiP Collaboration"
 SPDX-License-Identifier = "LGPL-3.0-or-later"
+
+# Vendored (trimmed) copies from the ACTS Examples framework.
+[[annotations]]
+path = [
+    "include/Index.hpp",
+    "include/Range.hpp",
+    "include/GeometryContainers.hpp",
+    "include/IndexSourceLink.hpp",
+]
+precedence = "override"
+SPDX-FileCopyrightText = "2016 CERN for the benefit of the ACTS project"
+SPDX-License-Identifier = "MPL-2.0"

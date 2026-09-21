@@ -1,7 +1,11 @@
 build/
 install/
 .cache/
+.pixi/
 *.root
+smoke_geometry.db
+smoke_field.cvf
+doxygen/html/
 bench-*.md
 bench-*.json
 timing_*.csv

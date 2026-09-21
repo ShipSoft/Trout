@@ -1,0 +1,21 @@
+# SPDX-FileCopyrightText: 2026 CERN for the benefit of the SHiP Collaboration
+#
+# SPDX-License-Identifier: LGPL-3.0-or-later
+
+name: Update shared configs
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: 0 6 1 * *
+jobs:
+  sync:
+    permissions:
+      contents: write
+      pull-requests: write
+    uses: ShipSoft/.github/.github/workflows/config-sync.yml@main
+    with:
+      base: main
+      files: |
+        AI_POLICY.md
+        .clang-tidy
+        cliff.toml

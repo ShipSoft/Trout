@@ -22,8 +22,6 @@
 #include <string>
 #include <utility>
 
-using namespace phlex;
-
 PHLEX_REGISTER_PROVIDERS(m, config) {
     // Bare filenames resolve under $SHIPFIELD_ROOT/share/field/ (see
     // loadCovfieField's own doc comment); absolute/relative paths pass through
@@ -36,8 +34,10 @@ PHLEX_REGISTER_PROVIDERS(m, config) {
 
     m.provide(
          "read_field",
-         [detector](data_cell_index const&) -> std::shared_ptr<DetectorField> { return detector; },
-         concurrency::unlimited)
+         [detector](phlex::data_cell_index const&) -> std::shared_ptr<DetectorField> {
+             return detector;
+         },
+         phlex::concurrency::unlimited)
         .output_product("spectrometer_field", phlex::experimental::identifier{"field"},
                         phlex::experimental::identifier{"job"});
 }
