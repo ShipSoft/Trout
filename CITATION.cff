@@ -2,7 +2,7 @@ cff-version: 1.2.0
 message: If you use this software, please cite it as below.
 title: trout
 version: 0.1.0
-date-released: "2026-04-08"
+date-released: "2026-09-21"
 url: https://github.com/ShipSoft/trout
 repository-code: https://github.com/ShipSoft/trout
 type: software
