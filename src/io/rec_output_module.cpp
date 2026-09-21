@@ -59,10 +59,6 @@ using HistD = ROOT::Experimental::RHist<double>;
 using FillerD = ROOT::Experimental::RHistConcurrentFiller<double>;
 using ContextD = ROOT::Experimental::RHistFillContext<double>;
 
-std::shared_ptr<HistD> make_hist(int nbins, double low, double high) {
-    return std::make_shared<HistD>(static_cast<std::uint64_t>(nbins), std::make_pair(low, high));
-}
-
 // Simulation-truth validation: sim_hits/sim_particles multiplicity and
 // position distributions. Only ever registered when isSim (see
 // PHLEX_REGISTER_ALGORITHMS below).

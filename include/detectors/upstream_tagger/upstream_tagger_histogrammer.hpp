@@ -3,58 +3,32 @@
 // SPDX-License-Identifier: LGPL-3.0-or-later
 
 // upstream_tagger_histogrammer.hpp — Upstream Tagger validation histograms.
-// Currently just per-event hit multiplicity; independent of the other
-// subdetector histogrammers, so UBT-specific monitoring can grow here
-// without touching them.
+// A placeholder for the UBT experts to fill in: so far only the per-event hit
+// multiplicity, which comes from the shared MultiplicityHistogrammer. Book
+// UBT-specific histograms in the constructor and fill them in observe(); once
+// there are enough of them, drop the base class and keep only this file (see
+// SpectrometerHistogrammer for how that ends up looking).
 
 #pragma once
 
 #include "HistoFileService.hpp"
-
-#include <ROOT/RHist.hxx>
-#include <ROOT/RHistConcurrentFiller.hxx>
-#include <ROOT/RHistFillContext.hxx>
+#include "detectors/multiplicity_histogrammer.hpp"
 
 #include <SHiP/detectors/UBTHit.hpp>
-#include <cstdint>
 #include <memory>
-#include <oneapi/tbb/enumerable_thread_specific.h>
 #include <utility>
 #include <vector>
 
-class UpstreamTaggerHistogrammer {
+class UpstreamTaggerHistogrammer : public MultiplicityHistogrammer<SHiP::UBTHit> {
    public:
     explicit UpstreamTaggerHistogrammer(std::shared_ptr<HistoFileService> file_service)
-        : file_service_{std::move(file_service)},
-          h_multiplicity_{std::make_shared<HistD>(static_cast<std::uint64_t>(1000),
-                                                  std::make_pair(-0.5, 999.5))},
-          f_multiplicity_{h_multiplicity_} {}
+        : MultiplicityHistogrammer{std::move(file_service), "h_upstream_tagger_multiplicity",
+                                   "Upstream tagger hits per event;N;Events"} {}
 
-    void observe(std::vector<SHiP::UBTHit> const& hits) {
-        ensure_context().Fill(static_cast<double>(hits.size()));
-    }
-
-    ~UpstreamTaggerHistogrammer() {
-        fill_contexts_.clear();
-        file_service_->put("h_upstream_tagger_multiplicity",
-                           "Upstream tagger hits per event;N;Events", *h_multiplicity_);
-    }
-
-   private:
-    using HistD = ROOT::Experimental::RHist<double>;
-    using FillerD = ROOT::Experimental::RHistConcurrentFiller<double>;
-    using ContextD = ROOT::Experimental::RHistFillContext<double>;
-
-    ContextD& ensure_context() {
-        auto& ctx = fill_contexts_.local();
-        if (!ctx) {
-            ctx = f_multiplicity_.CreateFillContext();
-        }
-        return *ctx;
-    }
-
-    std::shared_ptr<HistoFileService> file_service_;
-    std::shared_ptr<HistD> h_multiplicity_;
-    FillerD f_multiplicity_;
-    tbb::enumerable_thread_specific<std::shared_ptr<ContextD>> fill_contexts_;
+    // Deliberately not inherited: phlex deduces the bound object type and the
+    // member pointer's class in one go (see delegate() in
+    // phlex/metaprogramming/delegate.hpp), so &UpstreamTaggerHistogrammer::observe
+    // has to name a member of this class. Convenient, since this is also where
+    // the UBT-specific fills belong.
+    void observe(std::vector<SHiP::UBTHit> const& hits) { MultiplicityHistogrammer::observe(hits); }
 };

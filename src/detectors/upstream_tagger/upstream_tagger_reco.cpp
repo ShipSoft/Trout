@@ -1,21 +1,11 @@
-#include "phlex/core/product_selector.hpp"
-#include "phlex/module.hpp"
+// SPDX-FileCopyrightText: 2026 CERN for the benefit of the SHiP Collaboration
+//
+// SPDX-License-Identifier: LGPL-3.0-or-later
+
+#include "detectors/identity_reco.hpp"
 
 #include <SHiP/detectors/UBTHit.hpp>
-#include <iostream>
-using namespace phlex;
 
 PHLEX_REGISTER_ALGORITHMS(m, config) {
-    auto const layer = config.get<std::string>("layer");
-
-    // Identity transform: takes "value" in, produces "value" out
-    m.transform(
-         "upstream_tagger_reco",
-         [](std::vector<SHiP::UBTHit> const& particles) -> std::vector<SHiP::UBTHit> {
-             return particles;
-         },
-         concurrency::unlimited)
-        .input_family(
-            product_selector{.creator = "rntuple_source", .layer = layer, .suffix = "ubt_hits"})
-        .output_product_suffixes("upstream_tagger_reco");
+    register_identity_reco<SHiP::UBTHit>(m, config, "upstream_tagger_reco", "ubt_hits");
 }
