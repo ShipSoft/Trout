@@ -14,11 +14,13 @@
 #include <ROOT/RHist.hxx>
 #include <TH1D.h>
 
+#include <cstdint>
 #include <exception>
 #include <memory>
 #include <mutex>
 #include <spdlog/spdlog.h>
 #include <string>
+#include <utility>
 
 class HistoFileService {
    public:
@@ -46,3 +48,10 @@ class HistoFileService {
     std::unique_ptr<ROOT::Experimental::RFile> file_;
     std::mutex mutex_;
 };
+
+// Shared shorthand for the 1D double-binned histograms every histogrammer
+// in this project books.
+inline std::shared_ptr<ROOT::Experimental::RHist<double>> make_hist(std::uint64_t nbins, double low,
+                                                                    double high) {
+    return std::make_shared<ROOT::Experimental::RHist<double>>(nbins, std::make_pair(low, high));
+}

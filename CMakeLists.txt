@@ -142,6 +142,7 @@ foreach(
         ${detector}_reco
         MODULE
         src/detectors/${detector}/${detector}_reco.cpp
+        include/detectors/identity_reco.hpp
     )
     target_link_libraries(
         ${detector}_reco
@@ -154,7 +155,19 @@ foreach(
 endforeach()
 
 # Reconstruction output module plugin
-add_library(rec_output_module MODULE src/io/rec_output_module.cpp)
+add_library(
+    rec_output_module
+    MODULE
+    src/io/rec_output_module.cpp
+    include/HistoFileService.hpp
+    include/detectors/multiplicity_histogrammer.hpp
+    include/detectors/calorimeter/calorimeter_histogrammer.hpp
+    include/detectors/spectrometer/SpectrometerHistogrammer.hpp
+    include/detectors/surround_tagger/surround_tagger_histogrammer.hpp
+    include/detectors/timing_detector/timing_detector_histogrammer.hpp
+    include/detectors/upstream_tagger/upstream_tagger_histogrammer.hpp
+    include/io/typed_rntuple_writer.hpp
+)
 target_include_directories(
     rec_output_module
     PRIVATE
