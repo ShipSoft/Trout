@@ -1882,8 +1882,8 @@ environments:
       - conda: https://prefix.dev/ship/linux-64/shipgeometry-0.2.1-hb0f4dca_3.conda
       - conda: https://prefix.dev/ship/linux-64/shipgeometryservice-0.4.0-hb0f4dca_1.conda
       - conda: https://prefix.dev/ship/noarch/random123-1.14.0-h4616a5c_1.conda
-      - pypi: https://files.pythonhosted.org/packages/62/e6/5cd908c8a2caa47fdb0543d6dbc8655b78a53b83514819d66e7f71ecee16/gersemi-0.28.1-cp314-cp314-manylinux_2_28_x86_64.whl
       - pypi: https://files.pythonhosted.org/packages/66/65/08d3a5039b565231c501b31d1a973d4222e9803c03b2c31a9c08bdec3e30/cpplint-2.0.2-py3-none-any.whl
+      - pypi: https://files.pythonhosted.org/packages/87/ef/dcfaf0d78cf3684575fcdacd9213ce1d9d1bf98b9c194f891d0fe94dcda6/gersemi-0.29.1-cp314-cp314-manylinux_2_28_x86_64.whl
 packages:
 - conda: https://conda.anaconda.org/conda-forge/linux-64/_openmp_mutex-4.5-7_kmp_llvm.conda
   build_number: 7
@@ -12321,13 +12321,6 @@ packages:
   run_exports: {}
   size: 44148
   timestamp: 1781443807524
-- pypi: https://files.pythonhosted.org/packages/62/e6/5cd908c8a2caa47fdb0543d6dbc8655b78a53b83514819d66e7f71ecee16/gersemi-0.28.1-cp314-cp314-manylinux_2_28_x86_64.whl
-  name: gersemi
-  version: 0.28.1
-  sha256: 065cf4bc6c9b72f0fe9f0f3da4e2e4fdb97bf3bd419059599241d5e155cde262
-  requires_dist:
-  - pyyaml>=5,<7
-  requires_python: '>=3.8'
 - pypi: https://files.pythonhosted.org/packages/66/65/08d3a5039b565231c501b31d1a973d4222e9803c03b2c31a9c08bdec3e30/cpplint-2.0.2-py3-none-any.whl
   name: cpplint
   version: 2.0.2
@@ -12341,3 +12334,10 @@ packages:
   - testfixtures ; extra == 'dev'
   - tox<5 ; extra == 'dev'
   requires_python: '>=3.9'
+- pypi: https://files.pythonhosted.org/packages/87/ef/dcfaf0d78cf3684575fcdacd9213ce1d9d1bf98b9c194f891d0fe94dcda6/gersemi-0.29.1-cp314-cp314-manylinux_2_28_x86_64.whl
+  name: gersemi
+  version: 0.29.1
+  sha256: 014edec25c5162ca3ef0d2cc5699b37de27cfa7455e74accd85dae94dd9e3b3d
+  requires_dist:
+  - pyyaml>=5,<7
+  requires_python: '>=3.8'
