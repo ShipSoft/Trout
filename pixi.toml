@@ -79,7 +79,7 @@ commitizen = "*"
 # would reflow CMake files.
 [feature.lint.pypi-dependencies]
 cpplint = "==2.0.2"
-gersemi = "==0.28.1"
+gersemi = "==0.29.1"
 
 [feature.lint.tasks]
 lint = "prek run --all-files"
