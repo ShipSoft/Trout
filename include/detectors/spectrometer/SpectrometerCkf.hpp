@@ -200,6 +200,11 @@ class SpectrometerCkf {
 
         Acts::CombinatorialKalmanFilterOptions<TrackContainer> options(
             m_geoContext, m_magContext, std::cref(m_calibContext), extensions, propOptions);
+        // Station material's Ar/Z (acts_geometry_provider.cpp) are
+        // placeholders, not verified for the Bethe-Bloch energy-loss term —
+        // multipleScattering (left at its true default) doesn't depend on
+        // them, only X0. See buildStationMaterialSlab's comment.
+        options.energyLoss = false;
 
         TrackContainerBackend trackStorage;
         Trajectory trajStorage;
@@ -243,11 +248,12 @@ class SpectrometerCkf {
 
     // Refits one candidate's hit list with a real forward+backward-smoothed
     // Acts::KalmanFitter, starting from the same straight-line `seed` used to
-    // find it. Unlike the CKF above (no smoother available — see
-    // trackProxyToFitResult's comment), this gets real smoothed residuals, via
-    // the same SHiP::fromACTSFitResult converter the pre-CKF single-hit fit
-    // used (see ToyKalmanFitter::fit) — appropriate here since a smoother and
-    // reference surface are both actually configured below.
+    // find it. Unlike the CKF's own CombinatorialKalmanFilterExtensions (only
+    // updater/branchStopper/createTrackStates — no smoother, so its track
+    // states never get a smoothed component), this gets real smoothed
+    // residuals, via the same SHiP::fromACTSFitResult converter the pre-CKF
+    // single-hit fit used (see ToyKalmanFitter::fit) — appropriate here since
+    // a smoother and reference surface are both actually configured below.
     SHiP::TrackFitResult refit(Acts::BoundTrackParameters const& seed,
                                SpectrometerMeasurements const& measurements,
                                std::vector<ActsExamples::Index> const& hitIndices) const {
@@ -290,6 +296,8 @@ class SpectrometerCkf {
         Acts::KalmanFitterOptions<Trajectory> options(m_geoContext, m_magContext,
                                                       std::cref(m_calibContext), ext, propOptions,
                                                       &seed.referenceSurface());
+        // See the matching comment in findCandidateHits() above.
+        options.energyLoss = false;
 
         Acts::VectorTrackContainer trackStorage;
         Trajectory trajStorage;
