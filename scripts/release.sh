@@ -3,7 +3,8 @@
 # Copyright (C) CERN for the benefit of the SHiP Collaboration
 #
 # Cut a release: bump CMakeLists.txt VERSION, regenerate CHANGELOG.md via
-# git-cliff, create a release commit and an annotated tag. Does NOT push.
+# git-cliff and create a release commit. Does NOT tag or push: merges into
+# main rewrite the commit, so the tag goes on main after the release PR lands.
 
 set -euo pipefail
 
@@ -18,10 +19,15 @@ The script must be run from a clean working tree. It will:
   2. bump version and date-released in CITATION.cff (if present)
   3. regenerate CHANGELOG.md with `git cliff --tag v<version>`
   4. create commit `chore(release): v<version>`
-  5. create annotated tag `v<version>`
 
-Pushing is left to the operator:
-  git push origin <branch> && git push origin v<version>
+No tag is created and nothing is pushed. Open a pull request for the release
+commit and, once it is merged, find the release commit on main and tag it.
+Use its SHA rather than origin/main, which may have moved on since the merge:
+  git fetch origin
+  git log --oneline -E --grep='^chore\(release\): v<version>( |$)' origin/main
+  git tag -a v<version> <sha> -m "Release v<version>"
+  git push origin v<version>
+The Release workflow then publishes the GitHub release.
 EOF
 }
 
@@ -93,15 +99,18 @@ if [[ -f "${CITATION_FILE}" ]]; then
     git add "${CITATION_FILE}"
 fi
 git commit -m "chore(release): ${TAG}"
-git tag -a "${TAG}" -m "Release ${TAG}"
 
 cat <<EOF
 
-Release ${TAG} prepared on branch '${BRANCH}'.
+Release commit for ${TAG} created on branch '${BRANCH}'. No tag was created.
 
 Next steps:
-  git push origin ${BRANCH}
-  git push origin ${TAG}
-
-(or:  git push --follow-tags origin ${BRANCH})
+  1. git push origin ${BRANCH}, open a pull request and merge it
+  2. once it is on main, find the merged release commit and tag that SHA
+     (not origin/main, which may have moved on since the merge):
+       git fetch origin
+       git log --oneline -E --grep='^chore\(release\): ${TAG//./\\.}( |\$)' origin/main
+       git tag -a ${TAG} <sha> -m "Release ${TAG}"
+       git push origin ${TAG}
+     The Release workflow then publishes the GitHub release.
 EOF
