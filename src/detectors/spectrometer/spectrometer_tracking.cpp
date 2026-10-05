@@ -36,5 +36,5 @@ PHLEX_REGISTER_ALGORITHMS(m, config) {
 
     SHiP::trout::register_prepare_measurements(m, layer);
     SHiP::trout::register_generate_seeds(m, layer, seedLayerName);
-    SHiP::trout::register_fit_seed(m, seedLayer);
+    SHiP::trout::register_fit_seed(m, layer, seedLayer);
 }
