@@ -105,7 +105,7 @@ void register_generate_seeds(ModuleProxy const& m, phlex::experimental::identifi
              auto const next = obj.find_next_valid(*current + 1);
              return std::make_pair(next, seed);
          },
-         seedLayerName, phlex::concurrency::serial)
+         seedLayerName, phlex::concurrency::unlimited)
         .input_family(phlex::product_selector{
             .creator = "prepare_measurements", .layer = layer, .suffix = "spill_context"})
         .output_product_suffixes("seed_hit_pair");
