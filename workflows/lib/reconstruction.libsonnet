@@ -16,6 +16,7 @@ function(params)
     full_reco: true,
   } + params;
   {
+    stage: 'reconstruction',
     driver: {
       cpp: 'generate_layers',
       layers: {

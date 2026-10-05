@@ -34,5 +34,5 @@ struct SeedWithContext {
 // and spawns one "seed"-layer child data cell per surviving pair. No static
 // `total` is declared for the "seed" layer — phlex::unfold sizes it
 // dynamically at runtime.
-void register_generate_seeds(ModuleProxy& m, phlex::experimental::identifier const& layer,
+void register_generate_seeds(ModuleProxy const& m, phlex::experimental::identifier const& layer,
                              std::string const& seedLayerName);

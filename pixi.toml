@@ -20,7 +20,7 @@ field-service-core = "*"
 field-service-g4 = "*"
 field-service-tools = "==0.1.0"
 acts-core = "*"
-phlex = ">=0.3.0"
+phlex = ">=0.4.1"
 root = ">=6.36"
 geant4 = ">=11.3"
 random123 = "*"
@@ -38,7 +38,8 @@ eigen = "*"
 # Build tools
 cmake = ">=3.27"
 ninja = "*"
-cxx-compiler = "*"
+# >=2 brings GCC 15, which phlex 0.4.1's headers need (std::from_range).
+cxx-compiler = ">=2"
 
 [activation]
 scripts = ["activate.sh"]

@@ -24,4 +24,4 @@
 // feeds an unfold's output to a fold or transform, never to a second
 // unfold. Looping over candidates in plain C++ inside fit_seed sidesteps
 // that combination entirely.
-void register_fit_seed(ModuleProxy& m, phlex::experimental::identifier const& seedLayer);
+void register_fit_seed(ModuleProxy const& m, phlex::experimental::identifier const& seedLayer);

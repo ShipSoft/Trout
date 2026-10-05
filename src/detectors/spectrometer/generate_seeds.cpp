@@ -97,7 +97,7 @@ class SeedGenObject {
 
 }  // namespace
 
-void register_generate_seeds(ModuleProxy& m, phlex::experimental::identifier const& layer,
+void register_generate_seeds(ModuleProxy const& m, phlex::experimental::identifier const& layer,
                              std::string const& seedLayerName) {
     m.unfold<SeedGenObject>(
          "generate_seeds",

@@ -26,11 +26,10 @@ find_package(SHiPDataModel REQUIRED)
 find_package(SHiPFieldService REQUIRED)
 find_package(Acts CONFIG REQUIRED)
 
-# Phlex's cmake config does not call find_dependency for its transitive deps
 find_package(Boost REQUIRED COMPONENTS json)
 find_package(TBB REQUIRED)
 find_package(spdlog REQUIRED)
-find_package(phlex REQUIRED)
+find_package(phlex 0.4.1 REQUIRED)
 find_package(
     ROOT
     REQUIRED
