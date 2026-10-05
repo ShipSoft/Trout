@@ -12,4 +12,5 @@
 // SpectrometerCkf), built ONCE per spill and shared by every seed spawned
 // downstream (rather than rebuilt per seed, which would also reload the
 // field file every time).
-void register_prepare_measurements(ModuleProxy& m, phlex::experimental::identifier const& layer);
+void register_prepare_measurements(ModuleProxy const& m,
+                                   phlex::experimental::identifier const& layer);

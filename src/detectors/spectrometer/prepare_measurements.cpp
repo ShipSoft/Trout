@@ -15,7 +15,8 @@
 #include <memory>
 #include <vector>
 
-void register_prepare_measurements(ModuleProxy& m, phlex::experimental::identifier const& layer) {
+void register_prepare_measurements(ModuleProxy const& m,
+                                   phlex::experimental::identifier const& layer) {
     m.transform(
          "prepare_measurements",
          [](std::shared_ptr<std::vector<SHiP::StrawTubesHit>> const& ip,

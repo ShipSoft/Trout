@@ -22,7 +22,7 @@ constexpr std::size_t kMinHitsPerTrack = 4;
 
 }  // namespace
 
-void register_fit_seed(ModuleProxy& m, phlex::experimental::identifier const& seedLayer) {
+void register_fit_seed(ModuleProxy const& m, phlex::experimental::identifier const& seedLayer) {
     m.transform(
          "fit_seed",
          [](SeedWithContext const& swc) -> std::vector<SHiP::TrackFitResult> {
