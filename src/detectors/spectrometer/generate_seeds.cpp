@@ -9,6 +9,7 @@
 
 #include <cmath>
 #include <cstddef>
+#include <memory>
 #include <optional>
 #include <utility>
 #include <vector>
@@ -80,13 +81,10 @@ class SeedGenObject {
         return std::nullopt;
     }
 
-    // Bundles the pair with the SpillContext it was found in, so fit_seed
-    // takes a single, same-layer input rather than also joining spill_context
-    // in separately from the "spill" layer.
-    SeedWithContext seedAt(std::size_t k) const {
+    SeedHitPair seedAt(std::size_t k) const {
         auto const i = k / hits2_.size();
         auto const j = k % hits2_.size();
-        return SeedWithContext{ctx_, SeedHitPair{hits1_[i], hits2_[j]}};
+        return SeedHitPair{hits1_[i], hits2_[j]};
     }
 
    private:

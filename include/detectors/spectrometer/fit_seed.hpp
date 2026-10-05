@@ -7,9 +7,10 @@
 #include "PhlexModuleProxy.hpp"
 #include "phlex/core/product_selector.hpp"
 
-// fit_seed (seed layer, transform): takes one seed (SeedWithContext, which
-// already carries the SpillContext generate_seeds used), runs
-// ckf.findCandidateHits() for just that seed, and refits every surviving
+// fit_seed (seed layer, transform): takes one seed (a SeedHitPair) and the
+// SpillContext of the spill it came from (a spill-layer input, which phlex
+// hands to every seed of that spill), runs ckf.findCandidateHits() for just
+// that seed, and refits every surviving
 // CKF candidate branch (SpectrometerCkf::refit(), a real
 // forward+backward-smoothed Acts::KalmanFitter — the CKF exploration itself
 // has no smoother, see SpectrometerCkf.hpp) in a plain loop, returning all
@@ -22,4 +23,5 @@
 // higher layer was also fed into those children, which is what a chained
 // track unfold does. phlex 0.4.1 handles that combination, so a track layer
 // is now possible if per-track data cells are wanted.
-void register_fit_seed(ModuleProxy const& m, phlex::experimental::identifier const& seedLayer);
+void register_fit_seed(ModuleProxy const& m, phlex::experimental::identifier const& layer,
+                       phlex::experimental::identifier const& seedLayer);
