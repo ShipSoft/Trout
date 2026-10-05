@@ -36,13 +36,7 @@ find_package(
     COMPONENTS Core RIO Hist MathCore ROOTNTuple ROOTHistUtil
 )
 
-# Random123 is header-only and ships no CMake config of its own.
-find_path(
-    Random123_INCLUDE_DIR
-    NAMES Random123/philox.h
-    DOC "Random123 header directory"
-    REQUIRED
-)
+find_package(SHiPRandom 0.2 REQUIRED)
 
 # Digitised (flat, record-per-hit) file reader plugin
 add_library(read_digitised_hits MODULE src/io/read_digitised_hits.cpp)
@@ -192,14 +186,9 @@ target_include_directories(
     make_test_input
     PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/include"
 )
-target_include_directories(
-    make_test_input
-    SYSTEM
-    PRIVATE "${Random123_INCLUDE_DIR}"
-)
 target_link_libraries(
     make_test_input
-    PRIVATE SHiP::SHiPDataModel ROOT::RIO ROOT::ROOTNTuple TBB::tbb
+    PRIVATE SHiP::SHiPDataModel ROOT::RIO ROOT::ROOTNTuple TBB::tbb SHiP::Random
 )
 
 # Install

@@ -21,13 +21,13 @@
 #include <SHiP/detectors/TimeDetHit.hpp>
 #include <SHiP/detectors/UBTHit.hpp>
 #include <SHiP/detectors/detector_id.hpp>
+#include <SHiP/random/philox_rng.hpp>
 #include <array>
 #include <cstddef>
 #include <cstdint>
 #include <cstdio>
 #include <exception>
 #include <limits>
-#include <philox_rng.hpp>
 #include <string>
 
 // Global z positions [mm] of the four straw-tube stations
@@ -70,7 +70,7 @@ int main(int argc, char* argv[]) {
         SHiP::detector_id::TimingDetector};
 
     for (std::uint32_t event = 0; event < n_events; ++event) {
-        Trout::PhiloxRng rng{0, 0x7E57DA7A, event};
+        SHiP::random::PhiloxRng rng{0, 0x7E57DA7A, event};
 
         auto const n_tracks = 1 + static_cast<int>(rng.uniform(0.0, 3.0));
         for (int track = 0; track < n_tracks; ++track) {
