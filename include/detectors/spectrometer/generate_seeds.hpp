@@ -13,8 +13,8 @@
 
 // generate_seeds' per-child output, a single seed's identity: two hit
 // indices into SpillContext::measurements (one at station 1, one at station
-// 2). fit_seed takes it together with the spill's SpillContext and rebuilds
-// the actual BoundTrackParameters via makeSeedFromHitPair.
+// 2). find_candidates takes it together with the spill's SpillContext and
+// rebuilds the actual BoundTrackParameters via makeSeed.
 struct SeedHitPair {
     ActsExamples::Index idx0{0};
     ActsExamples::Index idx1{0};
