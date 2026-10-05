@@ -21,9 +21,10 @@ struct SeedHitPair {
 };
 
 // generate_seeds' actual per-child output: the pair plus the SpillContext it
-// came from, bundled together into one same-layer product for fit_seed (see
-// register_generate_seeds's doc comment for why this isn't instead a
-// separate, cross-layer broadcast input on fit_seed's side).
+// came from, bundled together into one same-layer product for fit_seed.
+// Taking spill_context as a second, spill-layer input on fit_seed instead
+// crashes phlex 0.3.2 whenever a spill yields no seeds; phlex 0.4.1 handles
+// it.
 struct SeedWithContext {
     std::shared_ptr<SpillContext> ctx;
     SeedHitPair pair;
