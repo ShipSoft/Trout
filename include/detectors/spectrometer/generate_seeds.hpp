@@ -9,25 +9,15 @@
 #include "SpillContext.hpp"
 #include "phlex/core/product_selector.hpp"
 
-#include <memory>
 #include <string>
 
-// A single seed's identity: two hit indices into SpillContext::measurements
-// (one at station 1, one at station 2) — fit_seed rebuilds the actual
-// BoundTrackParameters via makeSeedFromHitPair.
+// generate_seeds' per-child output, a single seed's identity: two hit
+// indices into SpillContext::measurements (one at station 1, one at station
+// 2). fit_seed takes it together with the spill's SpillContext and rebuilds
+// the actual BoundTrackParameters via makeSeedFromHitPair.
 struct SeedHitPair {
     ActsExamples::Index idx0{0};
     ActsExamples::Index idx1{0};
-};
-
-// generate_seeds' actual per-child output: the pair plus the SpillContext it
-// came from, bundled together into one same-layer product for fit_seed.
-// Taking spill_context as a second, spill-layer input on fit_seed instead
-// crashes phlex 0.3.2 whenever a spill yields no seeds; phlex 0.4.1 handles
-// it.
-struct SeedWithContext {
-    std::shared_ptr<SpillContext> ctx;
-    SeedHitPair pair;
 };
 
 // generate_seeds (spill layer, unfold): walks every station-1/station-2 hit

@@ -36,5 +36,5 @@ PHLEX_REGISTER_ALGORITHMS(m, config) {
 
     register_prepare_measurements(m, layer);
     register_generate_seeds(m, layer, seedLayerName);
-    register_fit_seed(m, seedLayer);
+    register_fit_seed(m, layer, seedLayer);
 }
