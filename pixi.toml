@@ -24,6 +24,8 @@ phlex = ">=0.4.1"
 root = ">=6.36"
 geant4 = ">=11.3"
 random123 = "*"
+# SHiP::random::PhiloxRng, for make_test_input.
+ship-random = ">=0.2"
 libjsonnet = "*"
 
 # C++ libraries
