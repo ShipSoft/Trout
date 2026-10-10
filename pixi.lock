@@ -384,9 +384,10 @@ environments:
       - conda: https://conda.anaconda.org/conda-forge/noarch/webencodings-0.5.1-pyhd8ed1ab_3.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/websocket-client-1.9.0-pyhd8ed1ab_0.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/zipp-4.1.0-pyhcf101f3_0.conda
-      - conda: https://prefix.dev/ship/linux-64/field-service-core-0.1.0-h0518e97_3.conda
-      - conda: https://prefix.dev/ship/linux-64/field-service-g4-0.1.0-h455128b_3.conda
-      - conda: https://prefix.dev/ship/linux-64/field-service-tools-0.1.0-h455128b_3.conda
+      - conda: https://prefix.dev/ship/linux-64/field-service-core-0.2.0-h0518e97_0.conda
+      - conda: https://prefix.dev/ship/linux-64/field-service-g4-0.2.0-h4c13c63_0.conda
+      - conda: https://prefix.dev/ship/linux-64/field-service-mapio-0.2.0-h4c13c63_0.conda
+      - conda: https://prefix.dev/ship/linux-64/field-service-tools-0.2.0-h10e6422_0.conda
       - conda: https://prefix.dev/ship/linux-64/libjsonnet-0.22.0-hb0f4dca_1.conda
       - conda: https://prefix.dev/ship/linux-64/mp-units-2.5.0-hb0f4dca_5.conda
       - conda: https://prefix.dev/ship/linux-64/shipdatamodel-0.5.0-h0518e97_0.conda
@@ -753,9 +754,10 @@ environments:
       - conda: https://conda.anaconda.org/conda-forge/noarch/webencodings-0.5.1-pyhd8ed1ab_3.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/websocket-client-1.9.0-pyhd8ed1ab_0.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/zipp-4.1.0-pyhcf101f3_0.conda
-      - conda: https://prefix.dev/ship/linux-64/field-service-core-0.1.0-h0518e97_3.conda
-      - conda: https://prefix.dev/ship/linux-64/field-service-g4-0.1.0-h455128b_3.conda
-      - conda: https://prefix.dev/ship/linux-64/field-service-tools-0.1.0-h455128b_3.conda
+      - conda: https://prefix.dev/ship/linux-64/field-service-core-0.2.0-h0518e97_0.conda
+      - conda: https://prefix.dev/ship/linux-64/field-service-g4-0.2.0-h4c13c63_0.conda
+      - conda: https://prefix.dev/ship/linux-64/field-service-mapio-0.2.0-h4c13c63_0.conda
+      - conda: https://prefix.dev/ship/linux-64/field-service-tools-0.2.0-h10e6422_0.conda
       - conda: https://prefix.dev/ship/linux-64/libjsonnet-0.22.0-hb0f4dca_1.conda
       - conda: https://prefix.dev/ship/linux-64/mp-units-2.5.0-hb0f4dca_5.conda
       - conda: https://prefix.dev/ship/linux-64/shipdatamodel-0.5.0-h0518e97_0.conda
@@ -1125,9 +1127,10 @@ environments:
       - conda: https://conda.anaconda.org/conda-forge/noarch/webencodings-0.5.1-pyhd8ed1ab_3.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/websocket-client-1.9.0-pyhd8ed1ab_0.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/zipp-4.1.0-pyhcf101f3_0.conda
-      - conda: https://prefix.dev/ship/linux-64/field-service-core-0.1.0-h0518e97_3.conda
-      - conda: https://prefix.dev/ship/linux-64/field-service-g4-0.1.0-h455128b_3.conda
-      - conda: https://prefix.dev/ship/linux-64/field-service-tools-0.1.0-h455128b_3.conda
+      - conda: https://prefix.dev/ship/linux-64/field-service-core-0.2.0-h0518e97_0.conda
+      - conda: https://prefix.dev/ship/linux-64/field-service-g4-0.2.0-h4c13c63_0.conda
+      - conda: https://prefix.dev/ship/linux-64/field-service-mapio-0.2.0-h4c13c63_0.conda
+      - conda: https://prefix.dev/ship/linux-64/field-service-tools-0.2.0-h10e6422_0.conda
       - conda: https://prefix.dev/ship/linux-64/libjsonnet-0.22.0-hb0f4dca_1.conda
       - conda: https://prefix.dev/ship/linux-64/mp-units-2.5.0-hb0f4dca_5.conda
       - conda: https://prefix.dev/ship/linux-64/shipdatamodel-0.5.0-h0518e97_0.conda
@@ -1496,9 +1499,10 @@ environments:
       - conda: https://conda.anaconda.org/conda-forge/noarch/webencodings-0.5.1-pyhd8ed1ab_3.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/websocket-client-1.9.0-pyhd8ed1ab_0.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/zipp-4.1.0-pyhcf101f3_0.conda
-      - conda: https://prefix.dev/ship/linux-64/field-service-core-0.1.0-h0518e97_3.conda
-      - conda: https://prefix.dev/ship/linux-64/field-service-g4-0.1.0-h455128b_3.conda
-      - conda: https://prefix.dev/ship/linux-64/field-service-tools-0.1.0-h455128b_3.conda
+      - conda: https://prefix.dev/ship/linux-64/field-service-core-0.2.0-h0518e97_0.conda
+      - conda: https://prefix.dev/ship/linux-64/field-service-g4-0.2.0-h4c13c63_0.conda
+      - conda: https://prefix.dev/ship/linux-64/field-service-mapio-0.2.0-h4c13c63_0.conda
+      - conda: https://prefix.dev/ship/linux-64/field-service-tools-0.2.0-h10e6422_0.conda
       - conda: https://prefix.dev/ship/linux-64/libjsonnet-0.22.0-hb0f4dca_1.conda
       - conda: https://prefix.dev/ship/linux-64/mp-units-2.5.0-hb0f4dca_5.conda
       - conda: https://prefix.dev/ship/linux-64/shipdatamodel-0.5.0-h0518e97_0.conda
@@ -1874,9 +1878,10 @@ environments:
       - conda: https://conda.anaconda.org/conda-forge/noarch/webencodings-0.5.1-pyhd8ed1ab_3.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/websocket-client-1.9.2-pyh5ded981_1.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/zipp-4.1.0-pyhcf101f3_0.conda
-      - conda: https://prefix.dev/ship/linux-64/field-service-core-0.1.0-h0518e97_3.conda
-      - conda: https://prefix.dev/ship/linux-64/field-service-g4-0.1.0-h455128b_3.conda
-      - conda: https://prefix.dev/ship/linux-64/field-service-tools-0.1.0-h455128b_3.conda
+      - conda: https://prefix.dev/ship/linux-64/field-service-core-0.2.0-h0518e97_0.conda
+      - conda: https://prefix.dev/ship/linux-64/field-service-g4-0.2.0-h4c13c63_0.conda
+      - conda: https://prefix.dev/ship/linux-64/field-service-mapio-0.2.0-h4c13c63_0.conda
+      - conda: https://prefix.dev/ship/linux-64/field-service-tools-0.2.0-h10e6422_0.conda
       - conda: https://prefix.dev/ship/linux-64/libjsonnet-0.22.0-hb0f4dca_1.conda
       - conda: https://prefix.dev/ship/linux-64/mp-units-2.5.0-hb0f4dca_5.conda
       - conda: https://prefix.dev/ship/linux-64/shipdatamodel-0.5.0-h0518e97_0.conda
@@ -11692,26 +11697,28 @@ packages:
   run_exports: {}
   size: 24190
   timestamp: 1779159948016
-- conda: https://prefix.dev/ship/linux-64/field-service-core-0.1.0-h0518e97_3.conda
-  sha256: 7bf06dad23501182a3fc39c958ce9e3b4ab4c1678fee58feabb9ddbd670ae28e
-  md5: ac82059d900d43ea8989dbc0b60b8562
+- conda: https://prefix.dev/ship/linux-64/field-service-core-0.2.0-h0518e97_0.conda
+  sha256: dab1e4941cf09f62d9dd3c5e84c0b794d4b049b24e00d758d39f6d6f3d578df1
+  md5: 83ff1c532404f9b4bbfbe482989fa133
   depends:
   - mp-units
+  - shipdatamodel <1
   - libstdcxx >=16
   - libgcc >=16
   - __glibc >=2.17,<3.0.a0
+  - shipdatamodel >=0.5.0,<0.6.0a0
   - mp-units >=2.5.0,<2.6.0a0
   license: LGPL-3.0-or-later
   run_exports:
     weak:
-    - field-service-core >=0.1.0,<0.2.0a0
-  size: 74435
-  timestamp: 1790257167453
-- conda: https://prefix.dev/ship/linux-64/field-service-g4-0.1.0-h455128b_3.conda
-  sha256: a8b8609796bf9049537a28aec6901dc041e4a7a31c10004d8a1d0dd29f2bdc3a
-  md5: 90e43b360a5f045e0d65c1360180b7dc
+    - field-service-core >=0.2.0,<0.3.0a0
+  size: 92996
+  timestamp: 1790879297661
+- conda: https://prefix.dev/ship/linux-64/field-service-g4-0.2.0-h4c13c63_0.conda
+  sha256: f5dfde163890de483077138ed45ea64c197ac406d20cdc23032e5edcc8997776
+  md5: a721918d4dcb0786cd709cebe1366377
   depends:
-  - field-service-core ==0.1.0 h0518e97_3
+  - field-service-core ==0.2.0 h0518e97_0
   - geant4
   - expat
   - zlib
@@ -11719,32 +11726,52 @@ packages:
   - libstdcxx >=16
   - libgcc >=16
   - __glibc >=2.17,<3.0.a0
-  - libfreetype >=2.14.3
-  - libfreetype6 >=2.14.3
-  - libexpat >=2.8.4,<3.0a0
-  - mp-units >=2.5.0,<2.6.0a0
   - libzlib >=1.3.2,<2.0a0
   - geant4 >=11.4.2,<11.4.3.0a0
+  - shipdatamodel >=0.5.0,<0.6.0a0
+  - libfreetype >=2.14.3
+  - libfreetype6 >=2.14.3
+  - libexpat >=2.8.5,<3.0a0
+  - mp-units >=2.5.0,<2.6.0a0
   license: LGPL-3.0-or-later
   run_exports:
     weak:
-    - field-service-g4 >=0.1.0,<0.2.0a0
-  size: 56445
-  timestamp: 1790257167453
-- conda: https://prefix.dev/ship/linux-64/field-service-tools-0.1.0-h455128b_3.conda
-  sha256: cc0351fdff3becdcb3bb10e2b3f4e89dee3ff586639808015b872dad55b8d818
-  md5: 2a4a56d291c4f273135d11894e4d5c89
+    - field-service-g4 >=0.2.0,<0.3.0a0
+  size: 57287
+  timestamp: 1790879297661
+- conda: https://prefix.dev/ship/linux-64/field-service-mapio-0.2.0-h4c13c63_0.conda
+  sha256: 56ff40566df694b2999dd9f2e0c0cf7db2057c94ebe023d976a514db4f4e02fb
+  md5: 556f2906041712e238bd999e02a81b19
   depends:
-  - field-service-core ==0.1.0 h0518e97_3
+  - field-service-core ==0.2.0 h0518e97_0
   - libstdcxx >=16
   - libgcc >=16
   - __glibc >=2.17,<3.0.a0
+  - shipdatamodel >=0.5.0,<0.6.0a0
+  - root_cxx_standard ==23
+  - mp-units >=2.5.0,<2.6.0a0
+  - root_base >=6.40.4,<6.40.5.0a0
+  license: LGPL-3.0-or-later
+  run_exports:
+    weak:
+    - field-service-mapio >=0.2.0,<0.3.0a0
+  size: 179336
+  timestamp: 1790879297661
+- conda: https://prefix.dev/ship/linux-64/field-service-tools-0.2.0-h10e6422_0.conda
+  sha256: 98d50ae81d9cc2adae5830ebd6f1d2d634d04a62b4990f52be4ea6bce5d35b8b
+  md5: 28fdca46821e0414f234c332dbf27631
+  depends:
+  - field-service-mapio ==0.2.0 h4c13c63_0
+  - libstdcxx >=16
+  - libgcc >=16
+  - __glibc >=2.17,<3.0.a0
+  - shipdatamodel >=0.5.0,<0.6.0a0
   - root_cxx_standard ==23
   - root_base >=6.40.4,<6.40.5.0a0
   license: LGPL-3.0-or-later
   run_exports: {}
-  size: 73039
-  timestamp: 1790257167453
+  size: 86310
+  timestamp: 1790879297661
 - conda: https://prefix.dev/ship/linux-64/libjsonnet-0.22.0-hb0f4dca_1.conda
   sha256: 1ee21a908866ba38a0585bbc199355b178f875aa354365387424965ee01d9dab
   md5: 91450f10621400e7176bc1fbd31c8d60
