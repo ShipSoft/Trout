@@ -4,7 +4,6 @@ install/
 .pixi/
 *.root
 smoke_geometry.db
-smoke_field.cvf
 doxygen/html/
 bench-*.md
 bench-*.json
