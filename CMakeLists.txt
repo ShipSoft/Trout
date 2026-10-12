@@ -23,7 +23,7 @@ set(CMAKE_MODULE_LINKER_FLAGS "${CMAKE_MODULE_LINKER_FLAGS} -Wl,--no-as-needed")
 find_package(SHiPGeometry CONFIG REQUIRED)
 find_package(SHiPGeometryService 0.3 CONFIG REQUIRED)
 find_package(SHiPDataModel REQUIRED)
-find_package(SHiPFieldService 0.2 REQUIRED COMPONENTS MapIO)
+find_package(SHiPFieldService 0.3 REQUIRED COMPONENTS MapIO ActsAdapter)
 find_package(Acts CONFIG REQUIRED)
 
 find_package(Boost REQUIRED COMPONENTS json)
@@ -63,7 +63,11 @@ target_include_directories(
 add_library(acts_field_provider MODULE src/acts_field_provider.cpp)
 target_link_libraries(
     acts_field_provider
-    PRIVATE phlex::module SHiPFieldService::MapIO Acts::Core spdlog::spdlog
+    PRIVATE
+        phlex::module
+        SHiPFieldService::MapIO
+        SHiPFieldService::ActsAdapter
+        spdlog::spdlog
 )
 target_include_directories(
     acts_field_provider
@@ -110,8 +114,6 @@ target_link_libraries(
         phlex::module
         SHiP::SHiPDataModel
         Acts::Core
-        SHiPFieldService::SHiPFieldService
-        SHiPFieldService::G4Adapter
         SHiPGeometryService::SHiPGeometryService
         spdlog::spdlog
 )
