@@ -23,7 +23,7 @@ set(CMAKE_MODULE_LINKER_FLAGS "${CMAKE_MODULE_LINKER_FLAGS} -Wl,--no-as-needed")
 find_package(SHiPGeometry CONFIG REQUIRED)
 find_package(SHiPGeometryService 0.3 CONFIG REQUIRED)
 find_package(SHiPDataModel REQUIRED)
-find_package(SHiPFieldService REQUIRED)
+find_package(SHiPFieldService 0.2 REQUIRED COMPONENTS MapIO)
 find_package(Acts CONFIG REQUIRED)
 
 find_package(Boost REQUIRED COMPONENTS json)
@@ -57,17 +57,13 @@ target_include_directories(
     PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/include"
 )
 
-# ACTS magnetic-field provider plugin (loads the spectrometer's covfie field
-# map once and shares it as an Acts::MagneticFieldProvider product, the same
-# "build once on layer job" pattern as acts_geometry_provider above)
+# ACTS magnetic-field provider plugin (loads the spectrometer's field map once
+# and shares it as an Acts::MagneticFieldProvider product, the same "build
+# once on layer job" pattern as acts_geometry_provider above)
 add_library(acts_field_provider MODULE src/acts_field_provider.cpp)
 target_link_libraries(
     acts_field_provider
-    PRIVATE
-        phlex::module
-        SHiPFieldService::SHiPFieldService
-        Acts::Core
-        spdlog::spdlog
+    PRIVATE phlex::module SHiPFieldService::MapIO Acts::Core spdlog::spdlog
 )
 target_include_directories(
     acts_field_provider

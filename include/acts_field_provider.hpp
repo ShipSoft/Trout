@@ -4,6 +4,7 @@
 
 #pragma once
 
+#include "FieldService/FieldMap.h"
 #include "FieldService/IFieldSource.h"
 
 #include <Acts/Definitions/Algebra.hpp>
@@ -16,23 +17,39 @@
 #include <array>
 #include <atomic>
 #include <cmath>
+#include <cstddef>
 #include <memory>
 #include <spdlog/spdlog.h>
 #include <stdexcept>
 #include <utility>
 
-// TODO: read the bounds from the field map instead of hardcoding them.
-// Values are in ACTS native units.
+// Global extent of a placed field map, in ACTS native units.
 struct FieldBounds {
-    double xmin = -4000 * Acts::UnitConstants::mm, xmax = 4000 * Acts::UnitConstants::mm,
-           ymin = -4000 * Acts::UnitConstants::mm, ymax = 4000 * Acts::UnitConstants::mm,
-           zmin = 0 * Acts::UnitConstants::mm, zmax = 100000 * Acts::UnitConstants::mm;
+    double xmin, xmax, ymin, ymax, zmin, zmax;
 };
+
+// Extent of a map whose local origin sits at `translation` (mm) in the
+// global frame. A mirrored axis stores only coordinates >= 0 and covers
+// [-max, max].
+[[nodiscard]] inline FieldBounds fieldBounds(ship::FieldMapGrid const& grid,
+                                             ship::FieldMapSymmetry const& symmetry,
+                                             std::array<double, 3> const& translation) {
+    std::array<double, 6> b{};
+    for (std::size_t a = 0; a < 3; ++a) {
+        double const lo = symmetry.mirror[a] ? -grid.max[a] : grid.min[a];
+        b[2 * a] = (lo + translation[a]) * Acts::UnitConstants::mm;
+        b[2 * a + 1] = (grid.max[a] + translation[a]) * Acts::UnitConstants::mm;
+    }
+    return {b[0], b[1], b[2], b[3], b[4], b[5]};
+}
 
 class ShipActsFieldProvider final : public Acts::MagneticFieldProvider {
    public:
-    explicit ShipActsFieldProvider(std::shared_ptr<ship::IFieldEvaluator> eval)
-        : m_eval(std::move(eval)) {
+    // `eval` answers in the map's local frame; `translation` (mm) is the
+    // global position of the map's origin, and `bounds` its global extent.
+    ShipActsFieldProvider(std::shared_ptr<ship::IFieldEvaluator> eval, FieldBounds bounds,
+                          std::array<double, 3> translation)
+        : m_bounds(bounds), m_translation(translation), m_eval(std::move(eval)) {
         if (!m_eval)
             throw std::invalid_argument("ShipActsFieldProvider: null field evaluator");
     }
@@ -56,7 +73,9 @@ class ShipActsFieldProvider final : public Acts::MagneticFieldProvider {
     // Outside the mapped volume the field is genuinely negligible (the map
     // covers the full magnetic region by construction), so out-of-bounds
     // lookups return B = 0 as a *deliberate* physics statement — the
-    // stepper's trial steps routinely poke past the map edges. Anomalies
+    // stepper's trial steps routinely poke past the map edges. The evaluator
+    // itself clamps to the boundary value outside its grid, so without this
+    // check the edge field would extend over the whole tracker. Anomalies
     // (non-finite values, evaluator exceptions), by contrast, fail the
     // lookup so the propagator aborts instead of silently continuing on a
     // straight line; they are also logged once per provider.
@@ -73,9 +92,13 @@ class ShipActsFieldProvider final : public Acts::MagneticFieldProvider {
             return Result::success(Acts::Vector3::Zero());
         }
 
-        const ship::Length x = posActs[0] / Acts::UnitConstants::mm * ship::units::mm;
-        const ship::Length y = posActs[1] / Acts::UnitConstants::mm * ship::units::mm;
-        const ship::Length z = posActs[2] / Acts::UnitConstants::mm * ship::units::mm;
+        // Global → map-local frame.
+        const ship::Length x =
+            (posActs[0] / Acts::UnitConstants::mm - m_translation[0]) * ship::units::mm;
+        const ship::Length y =
+            (posActs[1] / Acts::UnitConstants::mm - m_translation[1]) * ship::units::mm;
+        const ship::Length z =
+            (posActs[2] / Acts::UnitConstants::mm - m_translation[2]) * ship::units::mm;
 
         std::array<ship::IFieldEvaluator::field_q, 3> b{};
         try {
@@ -108,6 +131,7 @@ class ShipActsFieldProvider final : public Acts::MagneticFieldProvider {
     }
 
     FieldBounds m_bounds;
+    std::array<double, 3> m_translation;
     std::shared_ptr<ship::IFieldEvaluator> m_eval;
     mutable std::atomic<bool> m_warned{false};
 };

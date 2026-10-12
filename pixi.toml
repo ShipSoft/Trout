@@ -16,9 +16,14 @@ rattler-build = ">=0.35"
 shipdatamodel = "*"
 shipgeometry = "*"
 shipgeometryservice = ">=0.3"
-field-service-core = "*"
-field-service-g4 = "*"
-field-service-tools = "==0.2.0"
+# The SHiP field-map format and the MapIO component first ship in
+# field-service 0.2.0.
+field-service-core = ">=0.2.0"
+field-service-g4 = ">=0.2.0"
+# Field-map file I/O (SHiPFieldService::MapIO), used by acts_field_provider.
+field-service-mapio = ">=0.2.0"
+# generate_constant_fieldmap, used by the smoke test.
+field-service-tools = ">=0.2.0"
 acts-core = "*"
 phlex = ">=0.4.1"
 root = ">=6.36"

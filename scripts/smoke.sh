@@ -14,7 +14,7 @@ build_geometry smoke_geometry.db
 
 # Constant zero field over the field-map volume: make_test_input generates
 # straight-line tracks, so a field-free propagation matches them exactly.
-generate_constant_cvf smoke_field.cvf 0 0 0 -4000 4000 -4000 4000 0 100000
+generate_constant_fieldmap smoke_field.root smoke_field 0 0 0 -4000 4000 -4000 4000 0 100000
 
 ./build/make_test_input smoke_input.root 10
 
