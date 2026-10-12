@@ -1,0 +1,66 @@
+// SPDX-FileCopyrightText: 2026 CERN for the benefit of the SHiP Collaboration
+//
+// SPDX-License-Identifier: LGPL-3.0-or-later
+
+#include "detectors/spectrometer/find_candidates.hpp"
+
+#include "detectors/spectrometer/SpillContext.hpp"
+
+#include <cstddef>
+#include <memory>
+#include <utility>
+#include <vector>
+
+namespace {
+
+// The spectrometer has 4 stations — demand a candidate use all of them
+// before it's worth a refit. Most CKF candidates are landing at only 1-2
+// hits (well under this), which is a strong sign the crude straight-line
+// seed / nearest-measurement selector (see SpectrometerCkf.hpp) is picking
+// up unrelated-track hits rather than that this cut is too strict.
+constexpr std::size_t kMinHitsPerTrack = 4;
+
+// unfold's "Object": runs the CKF once for its seed at construction and
+// keeps the candidates that pass kMinHitsPerTrack. The unfold then walks
+// them by index, one child per kept candidate.
+class CandidateFinder {
+   public:
+    CandidateFinder(SeedHitPair const& pair, std::shared_ptr<SpillContext> const& ctx) {
+        if (!ctx || !ctx->measurements || !ctx->ckf)
+            return;
+        auto seed = makeSeed(pair, *ctx->measurements);
+        if (!seed)
+            return;
+        for (auto& hits : ctx->ckf->findCandidateHits(*seed, *ctx->measurements)) {
+            if (hits.size() >= kMinHitsPerTrack)
+                candidates_.push_back(CkfCandidate{pair, std::move(hits)});
+        }
+    }
+
+    std::size_t initial_value() const { return 0; }
+
+    std::size_t size() const { return candidates_.size(); }
+
+    CkfCandidate const& at(std::size_t k) const { return candidates_[k]; }
+
+   private:
+    std::vector<CkfCandidate> candidates_;
+};
+
+}  // namespace
+
+void register_find_candidates(ModuleProxy const& m, phlex::experimental::identifier const& layer,
+                              phlex::experimental::identifier const& seedLayer,
+                              std::string const& trackLayerName) {
+    m.unfold<CandidateFinder>(
+         "find_candidates",
+         [](CandidateFinder const& obj, std::size_t k) { return k < obj.size(); },
+         [](CandidateFinder const& obj, std::size_t k) { return std::make_pair(k + 1, obj.at(k)); },
+         trackLayerName, phlex::concurrency::unlimited)
+        .input_family(
+            phlex::product_selector{
+                .creator = "generate_seeds", .layer = seedLayer, .suffix = "seed_hit_pair"},
+            phlex::product_selector{
+                .creator = "prepare_measurements", .layer = layer, .suffix = "spill_context"})
+        .output_product_suffixes("ckf_candidate");
+}

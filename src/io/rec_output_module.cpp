@@ -38,6 +38,7 @@
 #include <SHiP/detectors/SBTHit.hpp>
 #include <SHiP/detectors/TimeDetHit.hpp>
 #include <SHiP/detectors/UBTHit.hpp>
+#include <cstddef>
 #include <cstdint>
 #include <exception>
 #include <filesystem>  // NOLINT(build/c++17)
@@ -153,11 +154,12 @@ class SimTruthHistogrammer {
 // No-op observer for benchmarking pure framework overhead.
 class RecoNoop {
    public:
-    void observe(SpectrometerTracks const&, UpstreamTaggerObjects const&,
-                 SurroundTaggerObjects const&, CalorimeterObjects const&,
-                 TimingDetectorObjects const&, std::shared_ptr<SimHits> const&,
-                 std::shared_ptr<SimParticles> const&) {}
-    void observe_tracks_only(SpectrometerTracks const&, UpstreamTaggerObjects const&,
+    // Takes the per-spill track count rather than the tracks themselves, so
+    // that it fires once per spill like the other detectors' products.
+    void observe(std::size_t, UpstreamTaggerObjects const&, SurroundTaggerObjects const&,
+                 CalorimeterObjects const&, TimingDetectorObjects const&,
+                 std::shared_ptr<SimHits> const&, std::shared_ptr<SimParticles> const&) {}
+    void observe_tracks_only(std::size_t, UpstreamTaggerObjects const&,
                              SurroundTaggerObjects const&, CalorimeterObjects const&,
                              TimingDetectorObjects const&) {}
 };
@@ -210,7 +212,7 @@ PHLEX_REGISTER_ALGORITHMS(m, config) {
         auto noop = m.make<RecoNoop>();
         if (isSim) {
             noop.observe("noop", &RecoNoop::observe, concurrency::unlimited)
-                .input_family(selector("fit_seed", "seed", "track_fit_result"),
+                .input_family(selector("count_tracks", "spill", "track_count"),
                               selector("upstream_tagger_reco", "spill", "upstream_tagger_reco"),
                               selector("surround_tagger_reco", "spill", "surround_tagger_reco"),
                               selector("calorimeter_reco", "spill", "calorimeter_reco"),
@@ -218,7 +220,7 @@ PHLEX_REGISTER_ALGORITHMS(m, config) {
                               passthrough("sim_hits"), passthrough("sim_particles"));
         } else {
             noop.observe("noop", &RecoNoop::observe_tracks_only, concurrency::unlimited)
-                .input_family(selector("fit_seed", "seed", "track_fit_result"),
+                .input_family(selector("count_tracks", "spill", "track_count"),
                               selector("upstream_tagger_reco", "spill", "upstream_tagger_reco"),
                               selector("surround_tagger_reco", "spill", "surround_tagger_reco"),
                               selector("calorimeter_reco", "spill", "calorimeter_reco"),
@@ -230,8 +232,8 @@ PHLEX_REGISTER_ALGORITHMS(m, config) {
     auto writer = m.make<HitRNTupleWriter>(rntuple_file, isSim);
 
     register_writer(writer, "write_spectrometer_tracks",
-                    &HitRNTupleWriter::write<SHiP::TrackFitResult>,
-                    selector("fit_seed", "seed", "track_fit_result"));
+                    &HitRNTupleWriter::write_one<SHiP::TrackFitResult>,
+                    selector("fit_track", "track", "track_fit_result"));
     register_writer(writer, "write_upstream_tagger", &HitRNTupleWriter::write<SHiP::UBTHit>,
                     selector("upstream_tagger_reco", "spill", "upstream_tagger_reco"));
     register_writer(writer, "write_surround_tagger", &HitRNTupleWriter::write<SHiP::SBTHit>,
@@ -254,8 +256,12 @@ PHLEX_REGISTER_ALGORITHMS(m, config) {
     auto histo_file_service = std::make_shared<HistoFileService>(histo_file);
 
     auto spectrometer_histo = m.make<SpectrometerHistogrammer>(histo_file_service);
-    register_writer(spectrometer_histo, "validate_spectrometer", &SpectrometerHistogrammer::observe,
-                    selector("fit_seed", "seed", "track_fit_result"));
+    register_writer(spectrometer_histo, "validate_spectrometer",
+                    &SpectrometerHistogrammer::observe_track,
+                    selector("fit_track", "track", "track_fit_result"));
+    register_writer(spectrometer_histo, "validate_spectrometer_multiplicity",
+                    &SpectrometerHistogrammer::observe_count,
+                    selector("count_tracks", "spill", "track_count"));
 
     auto ubt_histo = m.make<UpstreamTaggerHistogrammer>(histo_file_service);
     register_writer(ubt_histo, "validate_upstream_tagger", &UpstreamTaggerHistogrammer::observe,
