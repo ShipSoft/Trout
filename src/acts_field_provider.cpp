@@ -16,15 +16,16 @@
 #include "phlex/module.hpp"
 #include "phlex/source.hpp"
 
+#include <FieldService/ActsFieldAdapter.h>
 #include <FieldService/FieldMap.h>
 #include <FieldService/FieldMapIO.h>
 #include <algorithm>
 #include <array>
-#include <cmath>
 #include <memory>
+#include <spdlog/spdlog.h>
 #include <stdexcept>
 #include <string>
-#include <utility>
+#include <string_view>
 #include <vector>
 
 PHLEX_REGISTER_PROVIDERS(m, config) {
@@ -36,23 +37,27 @@ PHLEX_REGISTER_PROVIDERS(m, config) {
 
     // Maps are stored in their own frame; `translation` (mm) places the
     // map's origin in the global frame. Omitted means the origins coincide.
+    // ship::translated rejects non-finite values.
     std::array<double, 3> translation{};
     if (auto const t = config.get_if_present<std::vector<double>>("translation")) {
         if (t->size() != translation.size())
             throw std::invalid_argument("acts_field_provider: translation needs 3 values (mm)");
-        auto const finite = [](double v) { return std::isfinite(v); };
-        if (!std::ranges::all_of(*t, finite))
-            throw std::invalid_argument("acts_field_provider: translation values must be finite");
         std::ranges::copy(*t, translation.begin());
     }
 
-    // Read the map itself, not just an evaluator, so the lookup bounds come
-    // from its grid.
+    // Outside the mapped volume the field is genuinely negligible (the map
+    // covers the full magnetic region by construction), so lookups there get
+    // B = 0 instead of the evaluator's clamped edge value — the stepper's trial
+    // steps routinely poke past the map edges. Anomalies (non-finite values,
+    // evaluator exceptions) fail the lookup instead, and the first is logged.
     auto const map = ship::readFieldMap(ship::resolveFieldMapPath(file), map_name);
-    auto const bounds = fieldBounds(map.grid, map.symmetry, translation);
     auto detector = std::make_shared<DetectorField>();
-    detector->field =
-        std::make_shared<ShipActsFieldProvider>(ship::makeFieldEvaluator(map), bounds, translation);
+    detector->field = std::make_shared<ship::ActsFieldAdapter>(
+        ship::translated(ship::zeroOutside(ship::makeFieldEvaluator(map), ship::extent(map)),
+                         translation),
+        [](std::string_view what) {
+            spdlog::warn("acts_field_provider: {} — failing field lookups", what);
+        });
 
     m.provide(
          "read_field",

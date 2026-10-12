@@ -17,14 +17,14 @@ rattler-build = ">=0.35"
 # swap it for a sibling source build without this channel spec in scope.
 shipgeometry = "*"
 shipgeometryservice = ">=0.3"
-# The SHiP field-map format and the MapIO component first ship in
-# field-service 0.2.0.
-field-service-core = ">=0.2.0"
-field-service-g4 = ">=0.2.0"
+# The placement helpers and the ACTS adapter first ship in field-service 0.3.0.
+field-service-core = ">=0.3.0"
 # Field-map file I/O (SHiPFieldService::MapIO), used by acts_field_provider.
-field-service-mapio = ">=0.2.0"
+field-service-mapio = ">=0.3.0"
+# SHiPFieldService::ActsAdapter, used by acts_field_provider.
+field-service-acts = ">=0.3.0"
 # generate_constant_fieldmap, used by the smoke test.
-field-service-tools = ">=0.2.0"
+field-service-tools = ">=0.3.0"
 acts-core = "*"
 phlex = ">=0.4.1"
 root = ">=6.36"
