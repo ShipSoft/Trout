@@ -29,7 +29,7 @@ find_package(Acts 48 CONFIG REQUIRED)
 find_package(Boost REQUIRED)
 find_package(TBB REQUIRED)
 find_package(spdlog REQUIRED)
-find_package(phlex 0.4.1 REQUIRED)
+find_package(phlex 0.5.0 REQUIRED)
 find_package(
     ROOT
     REQUIRED
