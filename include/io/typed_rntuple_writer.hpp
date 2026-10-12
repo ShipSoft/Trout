@@ -35,7 +35,6 @@
 #include <string_view>
 #include <vector>
 
-using SpectrometerTracks = std::vector<SHiP::TrackFitResult>;
 using UpstreamTaggerObjects = std::vector<SHiP::UBTHit>;
 using SurroundTaggerObjects = std::vector<SHiP::SBTHit>;
 using CalorimeterObjects = std::vector<SHiP::CaloHit>;
@@ -167,6 +166,13 @@ class HitRNTupleWriter {
     template <typename Hit>
     void write(std::vector<Hit> const& hits) {
         write_all(hits, writers_.template get<Hit>());
+    }
+
+    // For products that come one object per data cell (each fitted track
+    // has its own "track"-layer cell) rather than as a per-spill vector.
+    template <typename Hit>
+    void write_one(Hit const& hit) {
+        writers_.template get<Hit>().write(hit);
     }
 
     // Kept separate: sim_writers_ is only conditionally constructed (when

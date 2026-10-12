@@ -89,10 +89,9 @@ add_library(ip_selector MODULE src/ip_selector.cpp)
 target_link_libraries(ip_selector PRIVATE phlex::module SHiP::SHiPDataModel)
 
 # Pattern recognition + track finding, split into phlex-native
-# prepare/unfold/fit stages so per-seed fitting is parallelized by the
+# prepare/unfold/fit stages so per-candidate fitting is parallelized by the
 # framework. One file per pipeline stage — spectrometer_tracking.cpp just
-# wires prepare_measurements/generate_seeds/fit_seed together; see its
-# header comment for the stage breakdown.
+# wires them together; see its header comment for the stage breakdown.
 add_library(
     spectrometer_tracking
     MODULE
@@ -101,8 +100,12 @@ add_library(
     include/detectors/spectrometer/prepare_measurements.hpp
     src/detectors/spectrometer/generate_seeds.cpp
     include/detectors/spectrometer/generate_seeds.hpp
-    src/detectors/spectrometer/fit_seed.cpp
-    include/detectors/spectrometer/fit_seed.hpp
+    src/detectors/spectrometer/find_candidates.cpp
+    include/detectors/spectrometer/find_candidates.hpp
+    src/detectors/spectrometer/fit_track.cpp
+    include/detectors/spectrometer/fit_track.hpp
+    src/detectors/spectrometer/count_tracks.cpp
+    include/detectors/spectrometer/count_tracks.hpp
     include/PhlexModuleProxy.hpp
     include/detectors/spectrometer/SpillContext.hpp
     include/detectors/spectrometer/SpectrometerCkf.hpp

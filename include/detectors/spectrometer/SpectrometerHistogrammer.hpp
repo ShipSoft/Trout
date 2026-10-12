@@ -14,11 +14,11 @@
 #include <ROOT/RHistFillContext.hxx>
 
 #include <SHiP/TrackFitResult.hpp>
+#include <cstddef>
 #include <cstdint>
 #include <memory>
 #include <oneapi/tbb/enumerable_thread_specific.h>
 #include <utility>
-#include <vector>
 
 class SpectrometerHistogrammer {
    public:
@@ -33,20 +33,25 @@ class SpectrometerHistogrammer {
           f_ref_y_{h_ref_y_},
           f_ref_z_{h_ref_z_} {}
 
-    void observe(std::vector<SHiP::TrackFitResult> const& tracks) {
+    // One call per fitted track (each has its own "track"-layer data cell).
+    void observe_track(SHiP::TrackFitResult const& track) {
         auto& ctxs = ensure_contexts();
-        ctxs.multiplicity->Fill(static_cast<double>(tracks.size()));
-        for (auto const& track : tracks) {
-            ctxs.ref_x->Fill(track.refLoc[0]);
-            ctxs.ref_y->Fill(track.refLoc[1]);
-            ctxs.ref_z->Fill(track.refLoc[2]);
-        }
+        ctxs.ref_x->Fill(track.refLoc[0]);
+        ctxs.ref_y->Fill(track.refLoc[1]);
+        ctxs.ref_z->Fill(track.refLoc[2]);
+    }
+
+    // One call per spill, with count_tracks' result. Per spill is a stand-in:
+    // the multiplicity should be per reconstructed event window once that
+    // layer exists (see count_tracks.hpp).
+    void observe_count(std::size_t count) {
+        ensure_contexts().multiplicity->Fill(static_cast<double>(count));
     }
 
     ~SpectrometerHistogrammer() {
         fill_contexts_.clear();
         file_service_->put("h_spectrometer_track_multiplicity",
-                           "Spectrometer tracks per event;N;Events", *h_multiplicity_);
+                           "Spectrometer tracks per spill;N;Spills", *h_multiplicity_);
         file_service_->put("h_ref_x", "Spectrometer track reference x position;x [mm];Entries",
                            *h_ref_x_);
         file_service_->put("h_ref_y", "Spectrometer track reference y position;y [mm];Entries",
