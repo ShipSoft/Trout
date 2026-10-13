@@ -26,6 +26,7 @@
 #include <Acts/Utilities/CalibrationContext.hpp>
 
 #include <SHiP/RecHit.hpp>
+#include <array>
 #include <cmath>
 #include <limits>
 #include <utility>
@@ -98,6 +99,9 @@ class SpectrometerMeasurements {
         auto const& indexSourceLink = sl.get<IndexSourceLink>();
         auto const& m = m_measurements[indexSourceLink.index()];
         ts.allocateCalibrated(m.local, m.covariance);
+        // The projector defaults to measuring loc0 twice; without this the
+        // second coordinate is compared with loc0 and loc1 is never measured.
+        ts.setProjectorSubspaceIndices(std::array{Acts::eBoundLoc0, Acts::eBoundLoc1});
         // Without this, states this calibrator services never carry an
         // uncalibrated source link at all — findCandidateHits() (SpectrometerCkf.hpp)
         // needs it to recover which measurement index a CKF-found state
