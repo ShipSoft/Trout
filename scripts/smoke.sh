@@ -29,5 +29,5 @@ for f in smoke_reco_output.root smoke_reco_validation.root; do
         exit 1
     fi
 done
-python scripts/validate_smoke.py smoke_reco_output.root smoke_reco_validation.root
+python scripts/validate_smoke.py smoke_reco_output.root smoke_reco_validation.root smoke_input.root
 echo "Smoke test OK"

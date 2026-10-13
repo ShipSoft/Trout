@@ -7,11 +7,17 @@
 
 Checks that the digitised-output file contains all per-detector RNTuples and
 that the validation file contains all histograms, each with entries.
+
+Given the input file as well, also checks that the spectrometer tracking
+found every generated track: make_test_input writes each track's four
+straw-tube hits consecutively, one per station, and each must come back as
+one output track built from exactly those four hits.
 """
 
 import os
 import sys
 
+import numpy as np
 import ROOT
 
 NTUPLES = [
@@ -74,11 +80,46 @@ def check_histograms(path):
     return errors
 
 
+HITS_PER_TRACK = 4  # one straw-tube hit per tracking station
+
+
+def hit_key(xs, ys):
+    """Order-independent key for a track's hits, robust to float noise."""
+    return frozenset(zip(np.round(xs, 3), np.round(ys, 3)))
+
+
+def check_truth(output_path, input_path):
+    hits = ROOT.RDataFrame("straw_tubes_hits", input_path).AsNumpy(["hit.recHit.position"])
+    positions = np.array([np.asarray(p) for p in hits["hit.recHit.position"]])
+    if len(positions) == 0 or len(positions) % HITS_PER_TRACK:
+        return [f"{input_path}: expected a multiple of {HITS_PER_TRACK} straw-tube hits, "
+                f"found {len(positions)}"]
+    generated = {hit_key(t[:, 0], t[:, 1])
+                 for t in positions.reshape(-1, HITS_PER_TRACK, 3)}
+
+    tracks = ROOT.RDataFrame("spectrometer_tracks", output_path).AsNumpy(
+        ["hit.inputMeasurementsX", "hit.inputMeasurementsY"])
+    found = {hit_key(np.asarray(xs), np.asarray(ys))
+             for xs, ys in zip(tracks["hit.inputMeasurementsX"],
+                               tracks["hit.inputMeasurementsY"])}
+
+    missing = len(generated - found)
+    print(f"spectrometer tracking: found {len(generated) - missing} of {len(generated)} "
+          f"generated tracks ({len(found - generated)} other hit combinations)")
+    if missing:
+        return [f"{output_path}: {missing} of {len(generated)} generated tracks "
+                "were not reconstructed"]
+    return []
+
+
 if __name__ == "__main__":
-    if len(sys.argv) != 3:
-        print(f"usage: {sys.argv[0]} <smoke_results.root> <reco_validation.root>", file=sys.stderr)
+    if len(sys.argv) not in (3, 4):
+        print(f"usage: {sys.argv[0]} <smoke_results.root> <reco_validation.root> [input.root]",
+              file=sys.stderr)
         sys.exit(2)
     errors = check_ntuples(sys.argv[1]) + check_histograms(sys.argv[2])
+    if len(sys.argv) == 4:
+        errors += check_truth(sys.argv[1], sys.argv[3])
     for error in errors:
         print(error, file=sys.stderr)
     sys.stdout.flush()
