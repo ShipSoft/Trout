@@ -39,6 +39,7 @@
 #include <Acts/Geometry/Blueprint.hpp>
 #include <Acts/Geometry/BlueprintOptions.hpp>
 #include <Acts/Geometry/CuboidVolumeBounds.hpp>
+#include <Acts/Geometry/Extent.hpp>
 #include <Acts/Geometry/GeometryContext.hpp>
 #include <Acts/Geometry/GeometryIdentifier.hpp>
 #include <Acts/Geometry/NavigationPolicyFactory.hpp>
@@ -177,13 +178,25 @@ std::shared_ptr<Acts::TrackingGeometry> build_tracking_geometry(G4VPhysicalVolum
     // construction path instead gives the volume real portals, so the
     // Navigator actually consults the navigation policy — TryAllNavigationPolicy
     // tries every surface in volume->surfaces() directly, which is exactly the
-    // addSurface-populated list above. Sensitives only: portals (this volume's
-    // own boundary faces) and passives aren't needed for this model.
+    // addSurface-populated list above, plus this volume's portals. Passives
+    // aren't needed for this model.
+    //
+    // A track that misses the remaining stations has to leave through a
+    // portal: without portals as candidates, or with a world volume that
+    // shares this volume's boundary, the navigator reports itself lost
+    // instead of reaching the end of the world. The CKF then keeps stepping
+    // (it ignores PropagatorPlainOptions::pathLimit, and its own loop
+    // protection does nothing in a field-free region), and the growing steps
+    // run the position off to infinity. The envelope gives the world volume
+    // room around this one, so leaving it ends the propagation.
     Acts::Experimental::Blueprint::Config blueprintCfg;
+    double const envelope = margin_mm * Acts::UnitConstants::mm;
+    blueprintCfg.envelope = Acts::ExtentEnvelope{
+        {.x = {envelope, envelope}, .y = {envelope, envelope}, .z = {envelope, envelope}}};
     auto root = std::make_unique<Acts::Experimental::Blueprint>(blueprintCfg);
     root->addStaticVolume(std::move(worldVolume), [](auto& node) {
         Acts::TryAllNavigationPolicy::Config navPolicyCfg;
-        navPolicyCfg.portals = false;
+        navPolicyCfg.portals = true;
         navPolicyCfg.passives = false;
         node.setNavigationPolicyFactory(std::shared_ptr<Acts::NavigationPolicyFactory>(
             Acts::NavigationPolicyFactory{}
