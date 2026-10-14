@@ -2,6 +2,44 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.2.0] - 2026-10-14
+
+### Features
+
+- [**breaking**] Require phlex 0.4.1
+- [**breaking**] Load field maps in the SHiP field-map format
+
+### Bug fixes
+
+- *(release)* Tag the release only after it lands on main
+- *(tracking)* Measure both local coordinates of a station hit
+- *(geometry)* Let tracks leave the station volume
+
+### Refactor
+
+- Take PhiloxRng from ship-random
+- Use field_service's ACTS adapter and placement helpers
+
+### Documentation
+
+- *(tracking)* Note that phlex 0.4.1 lifts the unfold workarounds
+
+### Testing
+
+- *(smoke)* Require every generated track to be reconstructed
+- *(smoke)* Count repeated hits and duplicate tracks in truth check
+
+### Miscellaneous
+
+- *(lint)* Move gersemi to 0.29.1
+- Sync shared configs
+- Update pixi lock file
+- Update pixi lock file
+
+### Build
+
+- *(pixi)* Keep shipdatamodel out of the base dependencies
+- Keep shipdatamodel below 0.6
 ## [0.1.0] - 2026-09-21
 
 ### Features
