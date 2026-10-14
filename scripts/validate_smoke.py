@@ -14,6 +14,7 @@ straw-tube hits consecutively, one per station, and each must come back as
 one output track built from exactly those four hits.
 """
 
+import collections
 import os
 import sys
 
@@ -85,7 +86,7 @@ HITS_PER_TRACK = 4  # one straw-tube hit per tracking station
 
 def hit_key(xs, ys):
     """Order-independent key for a track's hits, robust to float noise."""
-    return frozenset(zip(np.round(xs, 3), np.round(ys, 3)))
+    return tuple(sorted(zip(np.round(xs, 3), np.round(ys, 3))))
 
 
 def check_truth(output_path, input_path):
@@ -94,20 +95,23 @@ def check_truth(output_path, input_path):
     if len(positions) == 0 or len(positions) % HITS_PER_TRACK:
         return [f"{input_path}: expected a multiple of {HITS_PER_TRACK} straw-tube hits, "
                 f"found {len(positions)}"]
-    generated = {hit_key(t[:, 0], t[:, 1])
-                 for t in positions.reshape(-1, HITS_PER_TRACK, 3)}
+    generated = collections.Counter(hit_key(t[:, 0], t[:, 1])
+                                    for t in positions.reshape(-1, HITS_PER_TRACK, 3))
 
     tracks = ROOT.RDataFrame("spectrometer_tracks", output_path).AsNumpy(
         ["hit.inputMeasurementsX", "hit.inputMeasurementsY"])
-    found = {hit_key(np.asarray(xs), np.asarray(ys))
-             for xs, ys in zip(tracks["hit.inputMeasurementsX"],
-                               tracks["hit.inputMeasurementsY"])}
+    found = collections.Counter(hit_key(np.asarray(xs), np.asarray(ys))
+                                for xs, ys in zip(tracks["hit.inputMeasurementsX"],
+                                                  tracks["hit.inputMeasurementsY"]))
 
-    missing = len(generated - found)
-    print(f"spectrometer tracking: found {len(generated) - missing} of {len(generated)} "
-          f"generated tracks ({len(found - generated)} other hit combinations)")
+    # Counter subtraction keeps only positive counts, so each generated track
+    # needs its own output track, even if another track has the same hits.
+    n_generated = sum(generated.values())
+    missing = sum((generated - found).values())
+    print(f"spectrometer tracking: found {n_generated - missing} of {n_generated} "
+          f"generated tracks ({sum((found - generated).values())} other hit combinations)")
     if missing:
-        return [f"{output_path}: {missing} of {len(generated)} generated tracks "
+        return [f"{output_path}: {missing} of {n_generated} generated tracks "
                 "were not reconstructed"]
     return []
 
