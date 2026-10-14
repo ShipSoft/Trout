@@ -12,8 +12,9 @@ requires-pixi = ">=0.68"
 rattler-build = ">=0.35"
 
 [dependencies]
-# SHiP/HEP packages (prefix.dev/ship + conda-forge)
-shipdatamodel = "*"
+# SHiP/HEP packages (prefix.dev/ship + conda-forge). NB: shipdatamodel is
+# declared in [feature.released] below, not here, so the dev environment can
+# swap it for a sibling source build without this channel spec in scope.
 shipgeometry = "*"
 shipgeometryservice = ">=0.3"
 # The SHiP field-map format and the MapIO component first ship in
@@ -47,6 +48,15 @@ cmake = ">=3.27"
 ninja = "*"
 # >=2 brings GCC 15, which phlex 0.4.1's headers need (std::from_range).
 cxx-compiler = ">=2"
+
+# shipdatamodel as its released conda build (prefix.dev/ship). Held in a
+# feature that every environment pulls in, deliberately NOT in the base
+# [dependencies]: those are shared by all environments, so a channel spec there
+# stays in scope for dev even when [feature.dev] declares a path dependency,
+# and the solver can pick the channel binary over the sibling checkout
+# (ShipSoft/aegir#90).
+[feature.released.dependencies]
+shipdatamodel = "*"
 
 [activation]
 scripts = ["activate.sh"]
@@ -105,8 +115,10 @@ sed -i 's#"$PREK" hook-impl#pixi run -e lint prek hook-impl#' "$hooks/commit-msg
 # The dev environment adds a debugger to the default one. It can also build
 # shipdatamodel from a sibling checkout instead of the released conda
 # package: uncomment the dependency below (../data-model has to exist and to
-# package itself as a pixi-build source dependency), run `pixi lock`, then
-# `pixi run -e dev build`/`install`/`test`/`phlex ...`.
+# package itself as a pixi-build source dependency), drop "released" from the
+# dev environment's features in [environments], run `pixi lock`, then
+# `pixi run -e dev build`/`install`/`test`/`phlex ...`. If "released" stays,
+# the released shipdatamodel is still in scope and can win the solve.
 #
 # Leave it commented out in whatever you commit. A lock file that records the
 # source dependency cannot be resolved without the sibling checkout, which
@@ -116,8 +128,9 @@ sed -i 's#"$PREK" hook-impl#pixi run -e lint prek hook-impl#' "$hooks/commit-msg
 gdb = "*"
 
 [environments]
-default = { solve-group = "default" }
-bench = { features = ["bench"], solve-group = "default" }
-index = { features = ["index"], solve-group = "default" }
-lint = { features = ["lint"], solve-group = "lint" }
-dev = { features = ["dev"] }
+default = { features = ["released"], solve-group = "default" }
+bench = { features = ["bench", "released"], solve-group = "default" }
+index = { features = ["index", "released"], solve-group = "default" }
+lint = { features = ["lint", "released"], solve-group = "lint" }
+# Drop "released" here when building shipdatamodel from source, see above.
+dev = { features = ["dev", "released"] }
