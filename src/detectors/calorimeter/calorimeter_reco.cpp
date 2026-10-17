@@ -7,5 +7,6 @@
 #include <SHiP/detectors/CaloHit.hpp>
 
 PHLEX_REGISTER_ALGORITHMS(m, config) {
-    register_identity_reco<SHiP::CaloHit>(m, config, "calorimeter_reco", "calorimeter_hits");
+    SHiP::trout::register_identity_reco<SHiP::CaloHit>(m, config, "calorimeter_reco",
+                                                       "calorimeter_hits");
 }

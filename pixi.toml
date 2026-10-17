@@ -16,15 +16,16 @@ rattler-build = ">=0.35"
 # declared in [feature.released] below, not here, so the dev environment can
 # swap it for a sibling source build without this channel spec in scope.
 shipgeometry = "*"
-shipgeometryservice = ">=0.3"
-# The placement helpers and the ACTS adapter first ship in field-service 0.3.0.
-field-service-core = ">=0.3.0"
-# Field-map file I/O (SHiPFieldService::MapIO), used by acts_field_provider.
-field-service-mapio = ">=0.3.0"
-# SHiPFieldService::ActsAdapter, used by acts_field_provider.
-field-service-acts = ">=0.3.0"
+# SHiP::GeometryService and the SHiP/GeometryService/ headers first ship in 0.5.
+shipgeometryservice = ">=0.5"
+# The SHiP namespace and the SHiP::FieldService* targets first ship in 0.4.0.
+field-service-core = ">=0.4.0"
+# Field-map file I/O (SHiP::FieldServiceMapIO), used by acts_field_provider.
+field-service-mapio = ">=0.4.0"
+# SHiP::FieldServiceActsAdapter, used by acts_field_provider.
+field-service-acts = ">=0.4.0"
 # generate_constant_fieldmap, used by the smoke test.
-field-service-tools = ">=0.3.0"
+field-service-tools = ">=0.4.0"
 acts-core = "*"
 phlex = ">=0.4.1"
 root = ">=6.36"
@@ -56,8 +57,8 @@ cxx-compiler = ">=2"
 # and the solver can pick the channel binary over the sibling checkout
 # (ShipSoft/aegir#90).
 [feature.released.dependencies]
-# Trout still uses data-model's camelCase field names, which 0.6 renamed.
-shipdatamodel = ">=0.5,<0.6"
+# 0.6 renamed the fields to snake_case and moved the units into SHiP.
+shipdatamodel = ">=0.6"
 
 [activation]
 scripts = ["activate.sh"]

@@ -10,6 +10,7 @@
 //   - Validation histograms
 
 #include "HistoFileService.hpp"
+#include "PhlexModuleProxy.hpp"
 #include "TFile.h"
 #include "TH1D.h"
 #include "detectors/calorimeter/calorimeter_histogrammer.hpp"
@@ -52,6 +53,8 @@
 #include <string_view>
 #include <utility>
 #include <vector>
+
+namespace SHiP::trout {
 
 namespace {
 
@@ -162,9 +165,7 @@ class RecoNoop {
                              TimingDetectorObjects const&) {}
 };
 
-}  // namespace
-
-PHLEX_REGISTER_ALGORITHMS(m, config) {
+void register_rec_output(ModuleProxy const& m, phlex::configuration const& config) {
     using namespace phlex;
 
     auto mode = config.get<std::string>("mode", std::string{"reco"});
@@ -281,4 +282,12 @@ PHLEX_REGISTER_ALGORITHMS(m, config) {
             .observe("validate_sim_truth", &SimTruthHistogrammer::observe, concurrency::unlimited)
             .input_family(passthrough("sim_hits"), passthrough("sim_particles"));
     }
+}
+
+}  // namespace
+
+}  // namespace SHiP::trout
+
+PHLEX_REGISTER_ALGORITHMS(m, config) {
+    SHiP::trout::register_rec_output(m, config);
 }

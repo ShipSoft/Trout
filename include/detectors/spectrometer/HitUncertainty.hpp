@@ -11,6 +11,8 @@
 
 #include <Acts/Definitions/Algebra.hpp>
 
+namespace SHiP::trout {
+
 // Everything a future calibrated model might need to parameterise a hit's
 // uncertainty. Only globalPosition and time are actually populated today —
 // SpectrometerMeasurements builds these before pattern recognition or
@@ -37,3 +39,5 @@ struct HitUncertaintyContext {
 // calibration exists; callers (SpectrometerMeasurements today) shouldn't
 // need to change.
 Acts::SquareMatrix2 hitCovariance(HitUncertaintyContext const& context);
+
+}  // namespace SHiP::trout

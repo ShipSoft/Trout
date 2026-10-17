@@ -7,5 +7,6 @@
 #include <SHiP/detectors/UBTHit.hpp>
 
 PHLEX_REGISTER_ALGORITHMS(m, config) {
-    register_identity_reco<SHiP::UBTHit>(m, config, "upstream_tagger_reco", "ubt_hits");
+    SHiP::trout::register_identity_reco<SHiP::UBTHit>(m, config, "upstream_tagger_reco",
+                                                      "ubt_hits");
 }

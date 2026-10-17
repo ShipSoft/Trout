@@ -7,6 +7,8 @@
 #include "PhlexModuleProxy.hpp"
 #include "phlex/core/product_selector.hpp"
 
+namespace SHiP::trout {
+
 // fit_seed (seed layer, transform): takes one seed (SeedWithContext, which
 // already carries the SpillContext generate_seeds used), runs
 // ckf.findCandidateHits() for just that seed, and refits every surviving
@@ -23,3 +25,5 @@
 // track unfold does. phlex 0.4.1 handles that combination, so a track layer
 // is now possible if per-track data cells are wanted.
 void register_fit_seed(ModuleProxy const& m, phlex::experimental::identifier const& seedLayer);
+
+}  // namespace SHiP::trout

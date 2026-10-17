@@ -7,6 +7,8 @@
 #include "PhlexModuleProxy.hpp"
 #include "phlex/core/product_selector.hpp"
 
+namespace SHiP::trout {
+
 // prepare_measurements (spill layer, transform): straw_tubes_hits +
 // tracking_geometry -> SpillContext (SpectrometerMeasurements +
 // SpectrometerCkf), built ONCE per spill and shared by every seed spawned
@@ -14,3 +16,5 @@
 // field file every time).
 void register_prepare_measurements(ModuleProxy const& m,
                                    phlex::experimental::identifier const& layer);
+
+}  // namespace SHiP::trout

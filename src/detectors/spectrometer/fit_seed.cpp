@@ -11,6 +11,8 @@
 #include <cstddef>
 #include <vector>
 
+namespace SHiP::trout {
+
 namespace {
 
 // The spectrometer has 4 stations — demand a candidate use all of them
@@ -49,3 +51,5 @@ void register_fit_seed(ModuleProxy const& m, phlex::experimental::identifier con
             .creator = "generate_seeds", .layer = seedLayer, .suffix = "seed_hit_pair"})
         .output_product_suffixes("track_fit_result");
 }
+
+}  // namespace SHiP::trout

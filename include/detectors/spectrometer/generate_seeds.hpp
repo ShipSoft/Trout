@@ -12,6 +12,8 @@
 #include <memory>
 #include <string>
 
+namespace SHiP::trout {
+
 // A single seed's identity: two hit indices into SpillContext::measurements
 // (one at station 1, one at station 2) — fit_seed rebuilds the actual
 // BoundTrackParameters via makeSeedFromHitPair.
@@ -37,3 +39,5 @@ struct SeedWithContext {
 // dynamically at runtime.
 void register_generate_seeds(ModuleProxy const& m, phlex::experimental::identifier const& layer,
                              std::string const& seedLayerName);
+
+}  // namespace SHiP::trout

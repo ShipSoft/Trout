@@ -9,9 +9,13 @@
 
 #include <memory>
 
+namespace SHiP::trout {
+
 // Output of prepare_measurements, shared read-only by every seed spawned
 // from the same spill.
 struct SpillContext {
     std::shared_ptr<SpectrometerMeasurements> measurements;
     std::shared_ptr<SpectrometerCkf> ckf;
 };
+
+}  // namespace SHiP::trout

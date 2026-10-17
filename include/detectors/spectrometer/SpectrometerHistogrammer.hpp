@@ -20,6 +20,8 @@
 #include <utility>
 #include <vector>
 
+namespace SHiP::trout {
+
 class SpectrometerHistogrammer {
    public:
     explicit SpectrometerHistogrammer(std::shared_ptr<HistoFileService> file_service)
@@ -37,9 +39,9 @@ class SpectrometerHistogrammer {
         auto& ctxs = ensure_contexts();
         ctxs.multiplicity->Fill(static_cast<double>(tracks.size()));
         for (auto const& track : tracks) {
-            ctxs.ref_x->Fill(track.refLoc[0]);
-            ctxs.ref_y->Fill(track.refLoc[1]);
-            ctxs.ref_z->Fill(track.refLoc[2]);
+            ctxs.ref_x->Fill(track.ref_loc[0]);
+            ctxs.ref_y->Fill(track.ref_loc[1]);
+            ctxs.ref_z->Fill(track.ref_loc[2]);
         }
     }
 
@@ -80,3 +82,5 @@ class SpectrometerHistogrammer {
     FillerD f_multiplicity_, f_ref_x_, f_ref_y_, f_ref_z_;
     tbb::enumerable_thread_specific<FillContexts> fill_contexts_;
 };
+
+}  // namespace SHiP::trout

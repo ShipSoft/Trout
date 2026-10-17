@@ -22,6 +22,8 @@
 #include <string>
 #include <utility>
 
+namespace SHiP::trout {
+
 class HistoFileService {
    public:
     explicit HistoFileService(std::string filename)
@@ -55,3 +57,5 @@ inline std::shared_ptr<ROOT::Experimental::RHist<double>> make_hist(std::uint64_
                                                                     double high) {
     return std::make_shared<ROOT::Experimental::RHist<double>>(nbins, std::make_pair(low, high));
 }
+
+}  // namespace SHiP::trout

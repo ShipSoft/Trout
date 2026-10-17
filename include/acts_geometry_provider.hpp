@@ -5,10 +5,14 @@
 
 #include <Acts/Geometry/TrackingGeometry.hpp>
 
-#include <GeometryService/SHiPGeometryService.h>
+#include <SHiP/GeometryService/GeometryService.h>
 #include <memory>
 
+namespace SHiP::trout {
+
 struct DetectorGeometry {
-    std::shared_ptr<ship::SHiPGeometryService> geometryService;
+    std::shared_ptr<SHiP::GeometryService> geometryService;
     std::shared_ptr<const Acts::TrackingGeometry> trackingGeometry;
 };
+
+}  // namespace SHiP::trout

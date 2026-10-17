@@ -7,6 +7,6 @@
 #include <SHiP/detectors/TimeDetHit.hpp>
 
 PHLEX_REGISTER_ALGORITHMS(m, config) {
-    register_identity_reco<SHiP::TimeDetHit>(m, config, "timing_detector_reco",
-                                             "timing_detector_hits");
+    SHiP::trout::register_identity_reco<SHiP::TimeDetHit>(m, config, "timing_detector_reco",
+                                                          "timing_detector_hits");
 }

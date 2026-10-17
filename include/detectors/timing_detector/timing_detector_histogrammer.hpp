@@ -20,6 +20,8 @@
 #include <utility>
 #include <vector>
 
+namespace SHiP::trout {
+
 class TimingDetectorHistogrammer : public MultiplicityHistogrammer<SHiP::TimeDetHit> {
    public:
     explicit TimingDetectorHistogrammer(std::shared_ptr<HistoFileService> file_service)
@@ -35,3 +37,5 @@ class TimingDetectorHistogrammer : public MultiplicityHistogrammer<SHiP::TimeDet
         MultiplicityHistogrammer::observe(hits);
     }
 };
+
+}  // namespace SHiP::trout

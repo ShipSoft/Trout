@@ -47,8 +47,8 @@ PHLEX_REGISTER_ALGORITHMS(m, config) {
                  return op;
              op.reserve(ip->size());
              for (auto const& p : *ip) {
-                 op.emplace_back(SHiP::fromSimParticle(p));
-                 op.back().ipPV = calculateIP(p.vertex, p.momentum);
+                 op.emplace_back(SHiP::from_sim_particle(p));
+                 op.back().ip_pv = calculateIP(p.vertex, p.momentum);
              }
              return op;
          },

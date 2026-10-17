@@ -5,7 +5,7 @@
 // acts_geometry_provider.cpp — Phlex provider plugin
 //
 // Builds a minimal ACTS tracking geometry for the straw-tube spectrometer
-// from the real SHiP geometry (via SHiPGeometryService), replacing the
+// from the real SHiP geometry (via SHiP::GeometryService), replacing the
 // hardcoded plane z-positions in ToyDetector/keep_tracks.cpp. One
 // Acts::PlaneSurface per tracker station (/SHiP/trackers/station_1..4),
 // positioned at each station's real global placement.
@@ -18,7 +18,7 @@
 
 #include "acts_geometry_provider.hpp"
 
-#include "GeometryService/GeometryThread.h"
+#include "SHiP/GeometryService/GeometryThread.h"
 #include "phlex/configuration.hpp"
 #include "phlex/model/data_cell_index.hpp"
 #include "phlex/module.hpp"
@@ -217,7 +217,7 @@ std::shared_ptr<Acts::TrackingGeometry> build_tracking_geometry(G4VPhysicalVolum
 // (~G4PVPlacement -> GetRotation -> null per-thread base).
 struct G4GeometryCleanup {
     ~G4GeometryCleanup() {
-        ship::geometry_thread().run([] {
+        SHiP::geometry_thread().run([] {
             G4GeometryManager::GetInstance()->OpenGeometry();
             G4RegionStore::Clean();
             G4PhysicalVolumeStore::Clean();
@@ -246,9 +246,9 @@ PHLEX_REGISTER_PROVIDERS(m, config) {
                                      "'; set SHIPGEOMETRY_ROOT or provide an absolute path");
     }
 
-    std::shared_ptr<DetectorGeometry> detector;
-    ship::geometry_thread().run([&] {
-        auto service = ship::SHiPGeometryService::sharedFromFile(db_file);
+    std::shared_ptr<SHiP::trout::DetectorGeometry> detector;
+    SHiP::geometry_thread().run([&] {
+        auto const service = SHiP::GeometryService::sharedFromFile(db_file);
         auto* worldLV = service->geant4WorldLogical();
         if (!worldLV)
             throw std::runtime_error("acts_geometry_provider: GeoModel->G4 conversion failed for " +
@@ -258,7 +258,7 @@ PHLEX_REGISTER_PROVIDERS(m, config) {
         auto* worldPV = new G4PVPlacement(nullptr, G4ThreeVector(), worldLV, worldLV->GetName(),
                                           nullptr, false, 0);
 
-        detector = std::make_shared<DetectorGeometry>();
+        detector = std::make_shared<SHiP::trout::DetectorGeometry>();
         detector->geometryService = service;
         detector->trackingGeometry = build_tracking_geometry(worldPV);
     });
@@ -267,9 +267,8 @@ PHLEX_REGISTER_PROVIDERS(m, config) {
 
     m.provide(
          "read_tracking_geometry",
-         [detector, cleanup](phlex::data_cell_index const&) -> std::shared_ptr<DetectorGeometry> {
-             return detector;
-         },
+         [detector, cleanup](phlex::data_cell_index const&)
+             -> std::shared_ptr<SHiP::trout::DetectorGeometry> { return detector; },
          phlex::concurrency::unlimited)
         .output_product("tracking_geometry", phlex::experimental::identifier{"detector"},
                         phlex::experimental::identifier{"job"});

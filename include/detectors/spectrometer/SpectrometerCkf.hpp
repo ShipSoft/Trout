@@ -46,6 +46,8 @@
 #include <utility>
 #include <vector>
 
+namespace SHiP::trout {
+
 // Straight-line seed through two hits on different stations. p0 is a fixed
 // placeholder momentum (no curvature estimate yet — field-off/low-field
 // assumption between the first two stations), same as the previous
@@ -245,7 +247,7 @@ class SpectrometerCkf {
     // Acts::KalmanFitter, starting from the same straight-line `seed` used to
     // find it. Unlike the CKF above (no smoother available — see
     // trackProxyToFitResult's comment), this gets real smoothed residuals, via
-    // the same SHiP::fromACTSFitResult converter the pre-CKF single-hit fit
+    // the same fromActsFitResult converter the pre-CKF single-hit fit
     // used (see ToyKalmanFitter::fit) — appropriate here since a smoother and
     // reference surface are both actually configured below.
     SHiP::TrackFitResult refit(Acts::BoundTrackParameters const& seed,
@@ -303,7 +305,7 @@ class SpectrometerCkf {
         }
 
         auto result = m_fitter->fit(sourceLinks.begin(), sourceLinks.end(), seed, options, tracks);
-        return SHiP::fromACTSFitResult(result, tracks, m_geoContext);
+        return fromActsFitResult(result, tracks, m_geoContext);
     }
 
    private:
@@ -319,3 +321,5 @@ class SpectrometerCkf {
     std::unique_ptr<Ckf> m_ckf;
     std::unique_ptr<Fitter> m_fitter;
 };
+
+}  // namespace SHiP::trout

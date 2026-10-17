@@ -20,6 +20,8 @@
 #include <utility>
 #include <vector>
 
+namespace SHiP::trout {
+
 class SurroundTaggerHistogrammer : public MultiplicityHistogrammer<SHiP::SBTHit> {
    public:
     explicit SurroundTaggerHistogrammer(std::shared_ptr<HistoFileService> file_service)
@@ -33,3 +35,5 @@ class SurroundTaggerHistogrammer : public MultiplicityHistogrammer<SHiP::SBTHit>
     // the SBT-specific fills belong.
     void observe(std::vector<SHiP::SBTHit> const& hits) { MultiplicityHistogrammer::observe(hits); }
 };
+
+}  // namespace SHiP::trout
