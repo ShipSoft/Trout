@@ -1,7 +1,7 @@
 [workspace]
 name = "trout"
 description = "Phlex-based reconstruction framework for the SHiP experiment"
-channels = [ "https://prefix.dev/ship", "conda-forge"]
+channels = [ "https://prefix.dev/ship-experiment/stable", "conda-forge"]
 platforms = ["linux-64"]
 # Enables source dependencies for the (opt-in) multi-package dev workflow
 # below; inert for the other environments.
@@ -12,7 +12,7 @@ requires-pixi = ">=0.68"
 rattler-build = ">=0.35"
 
 [dependencies]
-# SHiP/HEP packages (prefix.dev/ship + conda-forge). NB: shipdatamodel is
+# SHiP/HEP packages (prefix.dev/ship-experiment/stable + conda-forge). NB: shipdatamodel is
 # declared in [feature.released] below, not here, so the dev environment can
 # swap it for a sibling source build without this channel spec in scope.
 shipgeometry = "*"
@@ -49,7 +49,7 @@ ninja = "*"
 # >=2 brings GCC 15, which phlex 0.4.1's headers need (std::from_range).
 cxx-compiler = ">=2"
 
-# shipdatamodel as its released conda build (prefix.dev/ship). Held in a
+# shipdatamodel as its released conda build (prefix.dev/ship-experiment/stable). Held in a
 # feature that every environment pulls in, deliberately NOT in the base
 # [dependencies]: those are shared by all environments, so a channel spec there
 # stays in scope for dev even when [feature.dev] declares a path dependency,
