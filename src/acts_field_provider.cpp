@@ -16,9 +16,9 @@
 #include "phlex/module.hpp"
 #include "phlex/source.hpp"
 
-#include <FieldService/ActsFieldAdapter.h>
-#include <FieldService/FieldMap.h>
-#include <FieldService/FieldMapIO.h>
+#include <SHiP/FieldService/ActsFieldAdapter.h>
+#include <SHiP/FieldService/FieldMap.h>
+#include <SHiP/FieldService/FieldMapIO.h>
 #include <algorithm>
 #include <array>
 #include <memory>
@@ -30,14 +30,14 @@
 
 PHLEX_REGISTER_PROVIDERS(m, config) {
     // `file` names the map file (bare filenames resolve under
-    // $SHIPFIELD_ROOT/share/field/, see ship::resolveFieldMapPath) and `map`
+    // $SHIPFIELD_ROOT/share/field/, see SHiP::resolveFieldMapPath) and `map`
     // the map inside it.
     auto const file = config.get<std::string>("file");
     auto const map_name = config.get<std::string>("map");
 
     // Maps are stored in their own frame; `translation` (mm) places the
     // map's origin in the global frame. Omitted means the origins coincide.
-    // ship::translated rejects non-finite values.
+    // SHiP::translated rejects non-finite values.
     std::array<double, 3> translation{};
     if (auto const t = config.get_if_present<std::vector<double>>("translation")) {
         if (t->size() != translation.size())
@@ -50,10 +50,10 @@ PHLEX_REGISTER_PROVIDERS(m, config) {
     // B = 0 instead of the evaluator's clamped edge value — the stepper's trial
     // steps routinely poke past the map edges. Anomalies (non-finite values,
     // evaluator exceptions) fail the lookup instead, and the first is logged.
-    auto const map = ship::readFieldMap(ship::resolveFieldMapPath(file), map_name);
-    auto detector = std::make_shared<DetectorField>();
-    detector->field = std::make_shared<ship::ActsFieldAdapter>(
-        ship::translated(ship::zeroOutside(ship::makeFieldEvaluator(map), ship::extent(map)),
+    auto const map = SHiP::readFieldMap(SHiP::resolveFieldMapPath(file), map_name);
+    auto const detector = std::make_shared<SHiP::trout::DetectorField>();
+    detector->field = std::make_shared<SHiP::ActsFieldAdapter>(
+        SHiP::translated(SHiP::zeroOutside(SHiP::makeFieldEvaluator(map), SHiP::extent(map)),
                          translation),
         [](std::string_view what) {
             spdlog::warn("acts_field_provider: {} — failing field lookups", what);
@@ -61,7 +61,7 @@ PHLEX_REGISTER_PROVIDERS(m, config) {
 
     m.provide(
          "read_field",
-         [detector](phlex::data_cell_index const&) -> std::shared_ptr<DetectorField> {
+         [detector](phlex::data_cell_index const&) -> std::shared_ptr<SHiP::trout::DetectorField> {
              return detector;
          },
          phlex::concurrency::unlimited)

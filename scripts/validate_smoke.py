@@ -90,8 +90,8 @@ def hit_key(xs, ys):
 
 
 def check_truth(output_path, input_path):
-    hits = ROOT.RDataFrame("straw_tubes_hits", input_path).AsNumpy(["hit.recHit.position"])
-    positions = np.array([np.asarray(p) for p in hits["hit.recHit.position"]])
+    hits = ROOT.RDataFrame("straw_tubes_hits", input_path).AsNumpy(["hit.rec_hit.position"])
+    positions = np.array([np.asarray(p) for p in hits["hit.rec_hit.position"]])
     if len(positions) == 0 or len(positions) % HITS_PER_TRACK:
         return [f"{input_path}: expected a multiple of {HITS_PER_TRACK} straw-tube hits, "
                 f"found {len(positions)}"]
@@ -99,10 +99,10 @@ def check_truth(output_path, input_path):
                                     for t in positions.reshape(-1, HITS_PER_TRACK, 3))
 
     tracks = ROOT.RDataFrame("spectrometer_tracks", output_path).AsNumpy(
-        ["hit.inputMeasurementsX", "hit.inputMeasurementsY"])
+        ["hit.input_measurements_x", "hit.input_measurements_y"])
     found = collections.Counter(hit_key(np.asarray(xs), np.asarray(ys))
-                                for xs, ys in zip(tracks["hit.inputMeasurementsX"],
-                                                  tracks["hit.inputMeasurementsY"]))
+                                for xs, ys in zip(tracks["hit.input_measurements_x"],
+                                                  tracks["hit.input_measurements_y"]))
 
     # Counter subtraction keeps only positive counts, so each generated track
     # needs its own output track, even if another track has the same hits.

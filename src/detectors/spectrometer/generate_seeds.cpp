@@ -13,6 +13,8 @@
 #include <utility>
 #include <vector>
 
+namespace SHiP::trout {
+
 namespace {
 
 // Same coincidence window used for the equivalent cut in keep_tracks.cpp.
@@ -112,3 +114,5 @@ void register_generate_seeds(ModuleProxy const& m, phlex::experimental::identifi
             .creator = "prepare_measurements", .layer = layer, .suffix = "spill_context"})
         .output_product_suffixes("seed_hit_pair");
 }
+
+}  // namespace SHiP::trout

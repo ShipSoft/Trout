@@ -34,7 +34,7 @@ PHLEX_REGISTER_ALGORITHMS(m, config) {
     auto const seedLayerName = std::string{"seed"};
     auto const seedLayer = phlex::experimental::identifier{seedLayerName};
 
-    register_prepare_measurements(m, layer);
-    register_generate_seeds(m, layer, seedLayerName);
-    register_fit_seed(m, seedLayer);
+    SHiP::trout::register_prepare_measurements(m, layer);
+    SHiP::trout::register_generate_seeds(m, layer, seedLayerName);
+    SHiP::trout::register_fit_seed(m, seedLayer);
 }

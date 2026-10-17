@@ -35,6 +35,8 @@
 #include <string_view>
 #include <vector>
 
+namespace SHiP::trout {
+
 using SpectrometerTracks = std::vector<SHiP::TrackFitResult>;
 using UpstreamTaggerObjects = std::vector<SHiP::UBTHit>;
 using SurroundTaggerObjects = std::vector<SHiP::SBTHit>;
@@ -196,3 +198,5 @@ class HitRNTupleWriter {
     // Left unconstructed (no RNTuples created at all) unless isSim
     std::optional<SimTruthWriters> sim_writers_;
 };
+
+}  // namespace SHiP::trout

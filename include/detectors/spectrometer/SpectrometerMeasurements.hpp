@@ -32,6 +32,8 @@
 #include <utility>
 #include <vector>
 
+namespace SHiP::trout {
+
 class SpectrometerMeasurements {
    public:
     struct Measurement {
@@ -113,3 +115,5 @@ class SpectrometerMeasurements {
     std::vector<Measurement> m_measurements;
     ActsExamples::GeometryIdMultiset<IndexSourceLink> m_sourceLinks;
 };
+
+}  // namespace SHiP::trout

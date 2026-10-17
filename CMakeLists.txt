@@ -21,9 +21,9 @@ set(CMAKE_MODULE_LINKER_FLAGS "${CMAKE_MODULE_LINKER_FLAGS} -Wl,--no-as-needed")
 
 # Dependencies
 find_package(SHiPGeometry CONFIG REQUIRED)
-find_package(SHiPGeometryService 0.3 CONFIG REQUIRED)
-find_package(SHiPDataModel REQUIRED)
-find_package(SHiPFieldService 0.3 REQUIRED COMPONENTS MapIO ActsAdapter)
+find_package(SHiPGeometryService 0.5 CONFIG REQUIRED)
+find_package(SHiPDataModel 0.6 REQUIRED)
+find_package(SHiPFieldService 0.4 REQUIRED COMPONENTS MapIO ActsAdapter)
 find_package(Acts CONFIG REQUIRED)
 
 find_package(Boost REQUIRED COMPONENTS json)
@@ -42,15 +42,15 @@ find_package(SHiPRandom 0.2 REQUIRED)
 add_library(read_digitised_hits MODULE src/io/read_digitised_hits.cpp)
 target_link_libraries(
     read_digitised_hits
-    PRIVATE phlex::module SHiP::SHiPDataModel ROOT::RIO ROOT::ROOTNTuple
+    PRIVATE phlex::module SHiP::DataModel ROOT::RIO ROOT::ROOTNTuple
 )
 
 # ACTS tracking-geometry provider plugin (builds Acts::TrackingGeometry for
-# the straw-tube stations from the real SHiP geometry via SHiPGeometryService)
+# the straw-tube stations from the real SHiP geometry via SHiP::GeometryService)
 add_library(acts_geometry_provider MODULE src/acts_geometry_provider.cpp)
 target_link_libraries(
     acts_geometry_provider
-    PRIVATE phlex::module SHiPGeometryService::SHiPGeometryService Acts::Core
+    PRIVATE phlex::module SHiP::GeometryService Acts::Core
 )
 target_include_directories(
     acts_geometry_provider
@@ -65,8 +65,8 @@ target_link_libraries(
     acts_field_provider
     PRIVATE
         phlex::module
-        SHiPFieldService::MapIO
-        SHiPFieldService::ActsAdapter
+        SHiP::FieldServiceMapIO
+        SHiP::FieldServiceActsAdapter
         spdlog::spdlog
 )
 target_include_directories(
@@ -76,11 +76,11 @@ target_include_directories(
 
 # Passthrough plugin
 add_library(passthrough MODULE src/passthrough.cpp)
-target_link_libraries(passthrough PRIVATE phlex::module SHiP::SHiPDataModel)
+target_link_libraries(passthrough PRIVATE phlex::module SHiP::DataModel)
 
 # IP selection
 add_library(ip_selector MODULE src/ip_selector.cpp)
-target_link_libraries(ip_selector PRIVATE phlex::module SHiP::SHiPDataModel)
+target_link_libraries(ip_selector PRIVATE phlex::module SHiP::DataModel)
 
 # Pattern recognition + track finding, split into phlex-native
 # prepare/unfold/fit stages so per-seed fitting is parallelized by the
@@ -112,9 +112,9 @@ target_link_libraries(
     spectrometer_tracking
     PRIVATE
         phlex::module
-        SHiP::SHiPDataModel
+        SHiP::DataModel
         Acts::Core
-        SHiPGeometryService::SHiPGeometryService
+        SHiP::GeometryService
         spdlog::spdlog
 )
 target_include_directories(
@@ -137,7 +137,7 @@ foreach(
     )
     target_link_libraries(
         ${detector}_reco
-        PRIVATE phlex::module SHiP::SHiPDataModel
+        PRIVATE phlex::module SHiP::DataModel
     )
     target_include_directories(
         ${detector}_reco
@@ -169,7 +169,7 @@ target_link_libraries(
     rec_output_module
     PRIVATE
         phlex::module
-        SHiP::SHiPDataModel
+        SHiP::DataModel
         ROOT::Hist
         ROOT::RIO
         ROOT::ROOTHistUtil
@@ -186,7 +186,7 @@ target_include_directories(
 )
 target_link_libraries(
     make_test_input
-    PRIVATE SHiP::SHiPDataModel ROOT::RIO ROOT::ROOTNTuple TBB::tbb SHiP::Random
+    PRIVATE SHiP::DataModel ROOT::RIO ROOT::ROOTNTuple TBB::tbb SHiP::Random
 )
 
 # Install

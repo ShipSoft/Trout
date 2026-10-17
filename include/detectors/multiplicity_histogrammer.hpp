@@ -23,6 +23,8 @@
 #include <utility>
 #include <vector>
 
+namespace SHiP::trout {
+
 template <typename Hit>
 class MultiplicityHistogrammer {
    public:
@@ -68,3 +70,5 @@ class MultiplicityHistogrammer {
     FillerD f_multiplicity_;
     tbb::enumerable_thread_specific<std::shared_ptr<ContextD>> fill_contexts_;
 };
+
+}  // namespace SHiP::trout

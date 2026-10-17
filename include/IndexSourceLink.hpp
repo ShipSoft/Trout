@@ -16,6 +16,8 @@
 
 #include <cassert>
 
+namespace SHiP::trout {
+
 struct IndexSourceLinkSurfaceAccessor;
 
 /// A source link that stores just an index.
@@ -82,3 +84,5 @@ struct IndexSourceLinkAccessor : ActsExamples::GeometryIdMultisetAccessor<IndexS
         return {Iterator{begin}, Iterator{end}};
     }
 };
+
+}  // namespace SHiP::trout

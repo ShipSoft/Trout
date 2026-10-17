@@ -7,5 +7,6 @@
 #include <SHiP/detectors/SBTHit.hpp>
 
 PHLEX_REGISTER_ALGORITHMS(m, config) {
-    register_identity_reco<SHiP::SBTHit>(m, config, "surround_tagger_reco", "sbt_hits");
+    SHiP::trout::register_identity_reco<SHiP::SBTHit>(m, config, "surround_tagger_reco",
+                                                      "sbt_hits");
 }

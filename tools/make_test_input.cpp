@@ -30,6 +30,10 @@
 #include <limits>
 #include <string>
 
+using SHiP::trout::NamedHit;
+using SHiP::trout::RNTupleFileService;
+using SHiP::trout::TypedHitWriters;
+
 // Global z positions [mm] of the four straw-tube stations
 // (/SHiP/trackers/station_1..4 in the geometry DB).
 constexpr std::array<double, 4> stat_z = {84070, 86070, 93070, 95070};
@@ -75,9 +79,9 @@ int main(int argc, char* argv[]) {
         auto const n_tracks = 1 + static_cast<int>(rng.uniform(0.0, 3.0));
         for (int track = 0; track < n_tracks; ++track) {
             SHiP::SimParticle particle;
-            particle.trackId = track;
-            particle.parentId = -1;
-            particle.pdgCode = 13;
+            particle.track_id = track;
+            particle.parent_id = -1;
+            particle.pdg_code = 13;
             particle.momentum = {rng.uniform(-0.5, 0.5), rng.uniform(-0.5, 0.5),
                                  rng.uniform(10.0, 100.0)};
             particle.energy = particle.momentum[2];
@@ -99,56 +103,56 @@ int main(int argc, char* argv[]) {
                 if (detector == SHiP::detector_id::StrawTubes) {
                     for (double const z : stat_z) {
                         SHiP::SimHit sim_hit;
-                        sim_hit.detectorId = static_cast<std::int32_t>(detector);
-                        sim_hit.trackId = track;
-                        sim_hit.pdgCode = particle.pdgCode;
+                        sim_hit.detector_id = static_cast<std::int32_t>(detector);
+                        sim_hit.track_id = track;
+                        sim_hit.pdg_code = particle.pdg_code;
                         sim_hit.position = {x_ref + slope_x * (z - z_ref) + rng.gaussian(0.0, 1.0),
                                             y_ref + slope_y * (z - z_ref) + rng.gaussian(0.0, 1.0),
                                             z};
                         sim_hit.momentum = particle.momentum;
-                        sim_hit.energyDeposit = rng.uniform(0.0, 0.1);
+                        sim_hit.energy_deposit = rng.uniform(0.0, 0.1);
                         sim_hit.time = track_time + rng.uniform(-1.0, 1.0);
-                        sim_hit.pathLength = rng.uniform(0.0, 10.0);
+                        sim_hit.path_length = rng.uniform(0.0, 10.0);
                         writers.get<SHiP::SimHit>().write(sim_hit);
                         SHiP::StrawTubesHit hit;
-                        hit.recHit = SHiP::fromSimHit(sim_hit);
+                        hit.rec_hit = SHiP::from_sim_hit(sim_hit);
                         writers.get<SHiP::StrawTubesHit>().write(hit);
                     }
                 } else {
                     SHiP::SimHit sim_hit;
-                    sim_hit.detectorId = static_cast<std::int32_t>(detector);
-                    sim_hit.trackId = track;
-                    sim_hit.pdgCode = particle.pdgCode;
+                    sim_hit.detector_id = static_cast<std::int32_t>(detector);
+                    sim_hit.track_id = track;
+                    sim_hit.pdg_code = particle.pdg_code;
                     sim_hit.position = {rng.uniform(-500.0, 500.0), rng.uniform(-500.0, 500.0),
                                         rng.uniform(0.0, 10000.0)};
                     sim_hit.momentum = particle.momentum;
-                    sim_hit.energyDeposit = rng.uniform(0.0, 0.1);
+                    sim_hit.energy_deposit = rng.uniform(0.0, 0.1);
                     sim_hit.time = rng.uniform(0.0, 100.0);
-                    sim_hit.pathLength = rng.uniform(0.0, 10.0);
+                    sim_hit.path_length = rng.uniform(0.0, 10.0);
                     writers.get<SHiP::SimHit>().write(sim_hit);
 
                     switch (detector) {
                         case SHiP::detector_id::UpstreamTagger: {
                             SHiP::UBTHit hit;
-                            hit.recHit = SHiP::fromSimHit(sim_hit);
+                            hit.rec_hit = SHiP::from_sim_hit(sim_hit);
                             writers.get<SHiP::UBTHit>().write(hit);
                             break;
                         }
                         case SHiP::detector_id::SurroundTagger: {
                             SHiP::SBTHit hit;
-                            hit.recHit = SHiP::fromSimHit(sim_hit);
+                            hit.rec_hit = SHiP::from_sim_hit(sim_hit);
                             writers.get<SHiP::SBTHit>().write(hit);
                             break;
                         }
                         case SHiP::detector_id::Calorimeter: {
                             SHiP::CaloHit hit;
-                            hit.recHit = SHiP::fromSimHit(sim_hit);
+                            hit.rec_hit = SHiP::from_sim_hit(sim_hit);
                             writers.get<SHiP::CaloHit>().write(hit);
                             break;
                         }
                         case SHiP::detector_id::TimingDetector: {
                             SHiP::TimeDetHit hit;
-                            hit.recHit = SHiP::fromSimHit(sim_hit);
+                            hit.rec_hit = SHiP::from_sim_hit(sim_hit);
                             writers.get<SHiP::TimeDetHit>().write(hit);
                             break;
                         }

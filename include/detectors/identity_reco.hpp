@@ -17,6 +17,8 @@
 #include <string>
 #include <vector>
 
+namespace SHiP::trout {
+
 template <typename Hit, typename Registrar>
 void register_identity_reco(Registrar& m, phlex::configuration const& config,
                             std::string const& name, std::string const& input_suffix) {
@@ -34,3 +36,5 @@ void register_identity_reco(Registrar& m, phlex::configuration const& config,
                                     .suffix = phlex::experimental::identifier{input_suffix}})
         .output_product_suffixes(name);
 }
+
+}  // namespace SHiP::trout

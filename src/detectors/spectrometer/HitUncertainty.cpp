@@ -6,6 +6,8 @@
 
 #include <Acts/Definitions/Units.hpp>
 
+namespace SHiP::trout {
+
 Acts::SquareMatrix2 hitCovariance(HitUncertaintyContext const& /*context*/) {
     // Placeholder, uncalibrated: sigma=100mm was arrived at empirically —
     // widened from an initial sigma=sqrt(10)~3.16mm guess after refit
@@ -21,3 +23,5 @@ Acts::SquareMatrix2 hitCovariance(HitUncertaintyContext const& /*context*/) {
     cov(1, 1) = sigma * sigma;
     return cov;
 }
+
+}  // namespace SHiP::trout

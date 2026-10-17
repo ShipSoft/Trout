@@ -8,9 +8,13 @@
 
 #include <memory>
 
+namespace SHiP::trout {
+
 // Output of the acts_field_provider phlex module, mirroring DetectorGeometry
 // (acts_geometry_provider.hpp): the field is loaded once and shared as a
 // single product, rather than every consumer loading its own copy.
 struct DetectorField {
     std::shared_ptr<Acts::MagneticFieldProvider> field;
 };
+
+}  // namespace SHiP::trout

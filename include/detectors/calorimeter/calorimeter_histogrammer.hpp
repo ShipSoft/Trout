@@ -19,6 +19,8 @@
 #include <utility>
 #include <vector>
 
+namespace SHiP::trout {
+
 class CalorimeterHistogrammer : public MultiplicityHistogrammer<SHiP::CaloHit> {
    public:
     explicit CalorimeterHistogrammer(std::shared_ptr<HistoFileService> file_service)
@@ -34,3 +36,5 @@ class CalorimeterHistogrammer : public MultiplicityHistogrammer<SHiP::CaloHit> {
         MultiplicityHistogrammer::observe(hits);
     }
 };
+
+}  // namespace SHiP::trout

@@ -19,6 +19,8 @@
 #include <utility>
 #include <vector>
 
+namespace SHiP::trout {
+
 class UpstreamTaggerHistogrammer : public MultiplicityHistogrammer<SHiP::UBTHit> {
    public:
     explicit UpstreamTaggerHistogrammer(std::shared_ptr<HistoFileService> file_service)
@@ -32,3 +34,5 @@ class UpstreamTaggerHistogrammer : public MultiplicityHistogrammer<SHiP::UBTHit>
     // the UBT-specific fills belong.
     void observe(std::vector<SHiP::UBTHit> const& hits) { MultiplicityHistogrammer::observe(hits); }
 };
+
+}  // namespace SHiP::trout

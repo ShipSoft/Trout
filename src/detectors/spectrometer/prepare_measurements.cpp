@@ -15,6 +15,8 @@
 #include <memory>
 #include <vector>
 
+namespace SHiP::trout {
+
 void register_prepare_measurements(ModuleProxy const& m,
                                    phlex::experimental::identifier const& layer) {
     m.transform(
@@ -29,7 +31,7 @@ void register_prepare_measurements(ModuleProxy const& m,
              std::vector<SHiP::RecHit> hits;
              hits.reserve(ip->size());
              for (auto const& h : *ip)
-                 hits.push_back(h.recHit);
+                 hits.push_back(h.rec_hit);
 
              auto gctx = Acts::GeometryContext::dangerouslyDefaultConstruct();
              ctx->measurements = std::make_shared<SpectrometerMeasurements>(
@@ -47,3 +49,5 @@ void register_prepare_measurements(ModuleProxy const& m,
                 .creator = "spectrometer_field", .layer = "job", .suffix = "field"})
         .output_product_suffixes("spill_context");
 }
+
+}  // namespace SHiP::trout
