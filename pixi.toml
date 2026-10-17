@@ -57,7 +57,7 @@ cxx-compiler = ">=2"
 # (ShipSoft/aegir#90).
 [feature.released.dependencies]
 # Trout still uses data-model's camelCase field names, which 0.6 renamed.
-shipdatamodel = ">=0.5,<0.6"
+shipdatamodel = ">=0.6,<0.7"
 
 [activation]
 scripts = ["activate.sh"]
