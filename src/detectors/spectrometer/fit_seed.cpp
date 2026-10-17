@@ -5,10 +5,12 @@
 #include "detectors/spectrometer/fit_seed.hpp"
 
 #include "detectors/spectrometer/SpectrometerCkf.hpp"
+#include "detectors/spectrometer/SpillContext.hpp"
 #include "detectors/spectrometer/generate_seeds.hpp"
 
 #include <SHiP/TrackFitResult.hpp>
 #include <cstddef>
+#include <memory>
 #include <vector>
 
 namespace {
@@ -22,13 +24,13 @@ constexpr std::size_t kMinHitsPerTrack = 4;
 
 }  // namespace
 
-void register_fit_seed(ModuleProxy const& m, phlex::experimental::identifier const& seedLayer) {
+void register_fit_seed(ModuleProxy const& m, phlex::experimental::identifier const& layer,
+                       phlex::experimental::identifier const& seedLayer) {
     m.transform(
          "fit_seed",
-         [](SeedWithContext const& swc) -> std::vector<SHiP::TrackFitResult> {
+         [](SeedHitPair const& pair,
+            std::shared_ptr<SpillContext> const& ctx) -> std::vector<SHiP::TrackFitResult> {
              std::vector<SHiP::TrackFitResult> results;
-             auto const& ctx = swc.ctx;
-             auto const& pair = swc.pair;
              if (!ctx || !ctx->measurements || !ctx->ckf)
                  return results;
              auto const& m0 = ctx->measurements->measurements()[pair.idx0];
@@ -45,7 +47,10 @@ void register_fit_seed(ModuleProxy const& m, phlex::experimental::identifier con
              return results;
          },
          phlex::concurrency::unlimited)
-        .input_family(phlex::product_selector{
-            .creator = "generate_seeds", .layer = seedLayer, .suffix = "seed_hit_pair"})
+        .input_family(
+            phlex::product_selector{
+                .creator = "generate_seeds", .layer = seedLayer, .suffix = "seed_hit_pair"},
+            phlex::product_selector{
+                .creator = "prepare_measurements", .layer = layer, .suffix = "spill_context"})
         .output_product_suffixes("track_fit_result");
 }
