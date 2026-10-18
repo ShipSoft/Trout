@@ -36,7 +36,7 @@ find_package(
     COMPONENTS Core RIO Hist MathCore ROOTNTuple ROOTHistUtil
 )
 
-find_package(SHiPRandom 0.2 REQUIRED)
+find_package(SHiPRandom 0.3 REQUIRED)
 
 # Digitised (flat, record-per-hit) file reader plugin
 add_library(read_digitised_hits MODULE src/io/read_digitised_hits.cpp)
