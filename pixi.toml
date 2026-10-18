@@ -33,8 +33,8 @@ geant4 = ">=11.3"
 random123 = "*"
 # SHiP::random::PhiloxRng, for make_test_input.
 # ship-random accepts only the requested minor in find_package (SameMinorVersion),
-# so keep this in step with find_package(SHiPRandom 0.3) in CMakeLists.txt.
-ship-random = ">=0.3,<0.4"
+# so keep this in step with find_package(SHiPRandom 0.4) in CMakeLists.txt.
+ship-random = ">=0.4,<0.5"
 libjsonnet = "*"
 
 # C++ libraries
