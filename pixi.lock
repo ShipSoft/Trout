@@ -394,7 +394,7 @@ environments:
       - conda: https://prefix.dev/ship-experiment/stable/linux-64/shipgeometry-0.2.1-h1c7f545_5.conda
       - conda: https://prefix.dev/ship-experiment/stable/linux-64/shipgeometryservice-0.5.0-h1c7f545_0.conda
       - conda: https://prefix.dev/ship-experiment/stable/noarch/random123-1.14.0-h4616a5c_1.conda
-      - conda: https://prefix.dev/ship-experiment/stable/noarch/ship-random-0.3.0-hcf0848a_0.conda
+      - conda: https://prefix.dev/ship-experiment/stable/noarch/ship-random-0.4.0-hcf0848a_0.conda
   default:
     channels:
     - url: https://prefix.dev/ship-experiment/stable/
@@ -764,7 +764,7 @@ environments:
       - conda: https://prefix.dev/ship-experiment/stable/linux-64/shipgeometry-0.2.1-h1c7f545_5.conda
       - conda: https://prefix.dev/ship-experiment/stable/linux-64/shipgeometryservice-0.5.0-h1c7f545_0.conda
       - conda: https://prefix.dev/ship-experiment/stable/noarch/random123-1.14.0-h4616a5c_1.conda
-      - conda: https://prefix.dev/ship-experiment/stable/noarch/ship-random-0.3.0-hcf0848a_0.conda
+      - conda: https://prefix.dev/ship-experiment/stable/noarch/ship-random-0.4.0-hcf0848a_0.conda
   dev:
     channels:
     - url: https://prefix.dev/ship-experiment/stable/
@@ -1137,7 +1137,7 @@ environments:
       - conda: https://prefix.dev/ship-experiment/stable/linux-64/shipgeometry-0.2.1-h1c7f545_5.conda
       - conda: https://prefix.dev/ship-experiment/stable/linux-64/shipgeometryservice-0.5.0-h1c7f545_0.conda
       - conda: https://prefix.dev/ship-experiment/stable/noarch/random123-1.14.0-h4616a5c_1.conda
-      - conda: https://prefix.dev/ship-experiment/stable/noarch/ship-random-0.3.0-hcf0848a_0.conda
+      - conda: https://prefix.dev/ship-experiment/stable/noarch/ship-random-0.4.0-hcf0848a_0.conda
   index:
     channels:
     - url: https://prefix.dev/ship-experiment/stable/
@@ -1509,7 +1509,7 @@ environments:
       - conda: https://prefix.dev/ship-experiment/stable/linux-64/shipgeometry-0.2.1-h1c7f545_5.conda
       - conda: https://prefix.dev/ship-experiment/stable/linux-64/shipgeometryservice-0.5.0-h1c7f545_0.conda
       - conda: https://prefix.dev/ship-experiment/stable/noarch/random123-1.14.0-h4616a5c_1.conda
-      - conda: https://prefix.dev/ship-experiment/stable/noarch/ship-random-0.3.0-hcf0848a_0.conda
+      - conda: https://prefix.dev/ship-experiment/stable/noarch/ship-random-0.4.0-hcf0848a_0.conda
   lint:
     channels:
     - url: https://prefix.dev/ship-experiment/stable/
@@ -1888,7 +1888,7 @@ environments:
       - conda: https://prefix.dev/ship-experiment/stable/linux-64/shipgeometry-0.2.1-h1c7f545_5.conda
       - conda: https://prefix.dev/ship-experiment/stable/linux-64/shipgeometryservice-0.5.0-h1c7f545_0.conda
       - conda: https://prefix.dev/ship-experiment/stable/noarch/random123-1.14.0-h4616a5c_1.conda
-      - conda: https://prefix.dev/ship-experiment/stable/noarch/ship-random-0.3.0-hcf0848a_0.conda
+      - conda: https://prefix.dev/ship-experiment/stable/noarch/ship-random-0.4.0-hcf0848a_0.conda
       - pypi: https://files.pythonhosted.org/packages/04/53/f2815b34359959172a6931932adde8e631de727a697a858265690030b55b/gersemi-0.29.2-cp314-cp314-manylinux_2_28_x86_64.whl
       - pypi: https://files.pythonhosted.org/packages/66/65/08d3a5039b565231c501b31d1a973d4222e9803c03b2c31a9c08bdec3e30/cpplint-2.0.2-py3-none-any.whl
 packages:
@@ -11564,17 +11564,17 @@ packages:
   run_exports: {}
   size: 44148
   timestamp: 1781443807524
-- conda: https://prefix.dev/ship-experiment/stable/noarch/ship-random-0.3.0-hcf0848a_0.conda
-  sha256: d2378bb5b57bd685d1ca5fa072fb9a460bd6f7f54f713eebccc17282a0d24542
-  md5: 93ffa5d36612f42f822df13c7503e04e
+- conda: https://prefix.dev/ship-experiment/stable/noarch/ship-random-0.4.0-hcf0848a_0.conda
+  sha256: 7332fe9aabffe2066b7d0caaa9a942ec42b19a83577cac5d31f6f2d244e8441a
+  md5: 89c2c4b23f6e18f85dac5731e3e6e169
   depends:
   - random123
   license: LGPL-3.0-or-later
   run_exports:
     weak:
-    - ship-random >=0.3.0,<0.4.0a0
-  size: 16417
-  timestamp: 1792271422522
+    - ship-random >=0.4.0,<0.5.0a0
+  size: 16538
+  timestamp: 1792358345710
 - pypi: https://files.pythonhosted.org/packages/04/53/f2815b34359959172a6931932adde8e631de727a697a858265690030b55b/gersemi-0.29.2-cp314-cp314-manylinux_2_28_x86_64.whl
   name: gersemi
   version: 0.29.2
