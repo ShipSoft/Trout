@@ -16,8 +16,9 @@ rattler-build = ">=0.35"
 # declared in [feature.released] below, not here, so the dev environment can
 # swap it for a sibling source build without this channel spec in scope.
 shipgeometry = "*"
-# SHiP::GeometryService and the SHiP/GeometryService/ headers first ship in 0.5.
-shipgeometryservice = ">=0.5"
+# geant4WorldLogical() returns a reference from 0.6, which also drops the
+# pre-0.5 spellings.
+shipgeometryservice = ">=0.6"
 # The SHiP namespace and the SHiP::FieldService* targets first ship in 0.4.0.
 field-service-core = ">=0.4.0"
 # Field-map file I/O (SHiP::FieldServiceMapIO), used by acts_field_provider.

@@ -249,13 +249,11 @@ PHLEX_REGISTER_PROVIDERS(m, config) {
     std::shared_ptr<SHiP::trout::DetectorGeometry> detector;
     SHiP::geometry_thread().run([&] {
         auto const service = SHiP::GeometryService::sharedFromFile(db_file);
-        auto* worldLV = service->geant4WorldLogical();
-        if (!worldLV)
-            throw std::runtime_error("acts_geometry_provider: GeoModel->G4 conversion failed for " +
-                                     db_file);
+        // Throws if the GeoModel->G4 conversion fails.
+        auto& worldLV = service->geant4WorldLogical();
         // Registered in (and owned by) the G4PhysicalVolumeStore; reclaimed
         // by the G4GeometryCleanup teardown above, never deleted directly.
-        auto* worldPV = new G4PVPlacement(nullptr, G4ThreeVector(), worldLV, worldLV->GetName(),
+        auto* worldPV = new G4PVPlacement(nullptr, G4ThreeVector(), &worldLV, worldLV.GetName(),
                                           nullptr, false, 0);
 
         detector = std::make_shared<SHiP::trout::DetectorGeometry>();
