@@ -2,6 +2,22 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.3.0] - 2026-10-19
+
+### Refactor
+
+- [**breaking**] Move Trout into SHiP::trout and onto data-model 0.6
+
+### Miscellaneous
+
+- Add advisory builds against ShipSoft library mains
+
+### Build
+
+- Resolve SHiP packages from ship-experiment/stable
+- Keep ship-random below 0.3
+- Move to ship-random 0.3
+- Move to ship-random 0.4
 ## [0.2.0] - 2026-10-14
 
 ### Features
