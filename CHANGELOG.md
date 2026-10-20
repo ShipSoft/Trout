@@ -2,6 +2,11 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.3.1] - 2026-10-20
+
+### Build
+
+- Move to geometry_service 0.6
 ## [0.3.0] - 2026-10-19
 
 ### Refactor
