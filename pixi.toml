@@ -2,7 +2,7 @@
 name = "trout"
 description = "Phlex-based reconstruction framework for the SHiP experiment"
 channels = [ "https://prefix.dev/ship-experiment/stable", "conda-forge"]
-platforms = ["linux-64"]
+platforms = ["linux-64", "linux-aarch64"]
 # Enables source dependencies for the (opt-in) multi-package dev workflow
 # below; inert for the other environments.
 preview = ["pixi-build"]
