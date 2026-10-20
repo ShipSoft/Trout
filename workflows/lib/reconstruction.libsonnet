@@ -9,15 +9,13 @@ function(params)
     // Path to shannon's digitised-hit output (or a make_test_input file).
     input_file: error 'input_file is required',
     db_file: '../geometry/my_ship_geometry.db',
-    // Spectrometer field map in the SHiP field-map format: the `file`, the
-    // `map` inside it, and an optional `translation` [x, y, z] in mm placing
-    // the map's origin in the global frame. The default puts it at the
-    // magnet centre, as FairShip and aegir do.
-    field: {
-      file: 'spectrometer_dipole.root',
-      map: 'spectrometer_dipole',
-      translation: [0, 0, 89570],
-    },
+    // Spectrometer field map in the SHiP field-map format. By default the
+    // map and its placement come from the placements.json that
+    // ship-field-maps installs under $SHIPFIELD_ROOT/share/field/ (`magnet`
+    // picks the entry, 'Spectrometer' if omitted). Alternatively give the
+    // `file`, the `map` inside it, and an optional `translation` [x, y, z] in
+    // mm placing the map's origin in the global frame.
+    field: { placements: 'placements.json', magnet: 'Spectrometer' },
     rntuple_file: error 'rntuple_file is required',
     histo_file: null,
     // Include the per-subdetector placeholder reconstruction modules.
