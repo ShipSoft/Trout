@@ -15,7 +15,8 @@ rattler-build = ">=0.35"
 # SHiP/HEP packages (prefix.dev/ship-experiment/stable + conda-forge). NB: shipdatamodel is
 # declared in [feature.released] below, not here, so the dev environment can
 # swap it for a sibling source build without this channel spec in scope.
-shipgeometry = "*"
+# build_geometry takes the output file only with -o from 0.3.0.
+shipgeometry = ">=0.3"
 # geant4WorldLogical() returns a reference from 0.6, which also drops the
 # pre-0.5 spellings.
 shipgeometryservice = ">=0.6"

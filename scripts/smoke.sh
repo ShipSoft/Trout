@@ -10,7 +10,7 @@
 set -euo pipefail
 
 # Geometry DB from the installed shipgeometry package.
-build_geometry smoke_geometry.db
+build_geometry -o smoke_geometry.db
 
 # Constant zero field over the field-map volume: make_test_input generates
 # straight-line tracks, so a field-free propagation matches them exactly.
