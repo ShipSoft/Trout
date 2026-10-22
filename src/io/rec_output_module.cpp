@@ -187,8 +187,7 @@ void register_rec_output(ModuleProxy const& m, phlex::configuration const& confi
             "differ (both resolve to '" +
             rntuple_file + "')");
 
-    // product_selector's members move from whatever they are given (even
-    // lvalues), so hand each selector its own identifier copies.
+    // Shorthand for the selectors below, built from string literals.
     auto selector = [](char const* creator, char const* layer, char const* suffix) {
         return product_selector{.creator = phlex::experimental::identifier{creator},
                                 .layer = phlex::experimental::identifier{layer},
