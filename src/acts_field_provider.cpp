@@ -28,33 +28,59 @@
 #include <string_view>
 #include <vector>
 
-PHLEX_REGISTER_PROVIDERS(m, config) {
+namespace {
+
+/// The spectrometer's map and placement: from a placement manifest
+/// (`placements`, field_service docs/placements_format.md) when given,
+/// otherwise from `file`, `map` and `translation`.
+SHiP::FieldMapSource::MagnetConfig spectrometerMagnet(phlex::configuration const& config) {
+    if (auto const placements = config.get_if_present<std::string>("placements")) {
+        if (config.get_if_present<std::string>("file") || config.get_if_present<std::string>("map"))
+            throw std::invalid_argument(
+                "acts_field_provider: set either 'placements' or 'file' and 'map', not both");
+        // A bare manifest name resolves via $SHIPFIELD_ROOT/share/field/, where
+        // the ship-field-maps package installs placements.json and its maps.
+        auto const name = config.get_if_present<std::string>("magnet").value_or("Spectrometer");
+        auto magnets = SHiP::readFieldMapPlacements(*placements).magnets;
+        auto const it = std::ranges::find(magnets, name, &SHiP::FieldMapSource::MagnetConfig::name);
+        if (it == magnets.end())
+            throw std::invalid_argument("acts_field_provider: " + *placements + " has no magnet '" +
+                                        name + "'");
+        return std::move(*it);
+    }
+
     // `file` names the map file (bare filenames resolve under
     // $SHIPFIELD_ROOT/share/field/, see SHiP::resolveFieldMapPath) and `map`
     // the map inside it.
-    auto const file = config.get<std::string>("file");
-    auto const map_name = config.get<std::string>("map");
-
+    SHiP::FieldMapSource::MagnetConfig magnet;
+    magnet.file = SHiP::resolveFieldMapPath(config.get<std::string>("file"));
+    magnet.map = config.get<std::string>("map");
     // Maps are stored in their own frame; `translation` (mm) places the
     // map's origin in the global frame. Omitted means the origins coincide.
-    // SHiP::translated rejects non-finite values.
-    std::array<double, 3> translation{};
     if (auto const t = config.get_if_present<std::vector<double>>("translation")) {
-        if (t->size() != translation.size())
+        if (t->size() != magnet.translation.size())
             throw std::invalid_argument("acts_field_provider: translation needs 3 values (mm)");
-        std::ranges::copy(*t, translation.begin());
+        std::ranges::copy(*t, magnet.translation.begin());
     }
+    return magnet;
+}
+
+}  // namespace
+
+PHLEX_REGISTER_PROVIDERS(m, config) {
+    auto const magnet = spectrometerMagnet(config);
 
     // Outside the mapped volume the field is genuinely negligible (the map
     // covers the full magnetic region by construction), so lookups there get
     // B = 0 instead of the evaluator's clamped edge value — the stepper's trial
     // steps routinely poke past the map edges. Anomalies (non-finite values,
     // evaluator exceptions) fail the lookup instead, and the first is logged.
-    auto const map = SHiP::readFieldMap(SHiP::resolveFieldMapPath(file), map_name);
+    // SHiP::translated rejects a non-finite translation.
+    auto const map = SHiP::readFieldMap(magnet.file, magnet.map);
     auto const detector = std::make_shared<SHiP::trout::DetectorField>();
     detector->field = std::make_shared<SHiP::ActsFieldAdapter>(
         SHiP::translated(SHiP::zeroOutside(SHiP::makeFieldEvaluator(map), SHiP::extent(map)),
-                         translation),
+                         magnet.translation),
         [](std::string_view what) {
             spdlog::warn("acts_field_provider: {} — failing field lookups", what);
         });

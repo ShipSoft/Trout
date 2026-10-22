@@ -15,6 +15,17 @@ build_geometry -o smoke_geometry.db
 # Constant zero field over the field-map volume: make_test_input generates
 # straight-line tracks, so a field-free propagation matches them exactly.
 generate_constant_fieldmap smoke_field.root smoke_field 0 0 0 -4000 4000 -4000 4000 0 100000
+# The reconstruction reads it through a placement manifest, the way it reads the
+# ship-field-maps one by default.
+cat >smoke_placements.json <<'EOF'
+{
+  "format_version": 1,
+  "maps": {"smoke_field": {"file": "smoke_field.root"}},
+  "magnets": [
+    {"name": "Spectrometer", "volume_pattern": "/SHiP/magnet", "map": "smoke_field"}
+  ]
+}
+EOF
 
 ./build/make_test_input smoke_input.root 10
 
