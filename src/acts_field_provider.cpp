@@ -35,9 +35,13 @@ namespace {
 /// otherwise from `file`, `map` and `translation`.
 SHiP::FieldMapSource::MagnetConfig spectrometerMagnet(phlex::configuration const& config) {
     if (auto const placements = config.get_if_present<std::string>("placements")) {
-        if (config.get_if_present<std::string>("file") || config.get_if_present<std::string>("map"))
+        if (config.get_if_present<std::string>("file") ||
+            config.get_if_present<std::string>("map") ||
+            config.get_if_present<std::vector<double>>("translation")) {
             throw std::invalid_argument(
-                "acts_field_provider: set either 'placements' or 'file' and 'map', not both");
+                "acts_field_provider: 'placements' cannot be combined with 'file', 'map' or "
+                "'translation'");
+        }
         // A bare manifest name resolves via $SHIPFIELD_ROOT/share/field/, where
         // the ship-field-maps package installs placements.json and its maps.
         auto const name = config.get_if_present<std::string>("magnet").value_or("Spectrometer");
