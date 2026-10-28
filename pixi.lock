@@ -10,7 +10,7 @@ environments:
     packages:
       linux-64:
       - conda: https://conda.anaconda.org/conda-forge/linux-64/_openmp_mutex-4.5-7_kmp_llvm.conda
-      - conda: https://conda.anaconda.org/conda-forge/linux-64/acts-core-45.5.1-np2hc5ef2b4_1.conda
+      - conda: https://conda.anaconda.org/conda-forge/linux-64/acts-core-48.2.0-np2h3377b24_0.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-64/alsa-lib-1.2.16.1-hb03c661_0.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-64/argon2-cffi-bindings-25.1.0-py314h5bd0f2a_2.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-64/at-spi2-atk-2.38.0-h0630a04_3.tar.bz2
@@ -774,7 +774,7 @@ environments:
     packages:
       linux-64:
       - conda: https://conda.anaconda.org/conda-forge/linux-64/_openmp_mutex-4.5-7_kmp_llvm.conda
-      - conda: https://conda.anaconda.org/conda-forge/linux-64/acts-core-45.5.1-np2hc5ef2b4_1.conda
+      - conda: https://conda.anaconda.org/conda-forge/linux-64/acts-core-48.2.0-np2h3377b24_0.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-64/alsa-lib-1.2.16.1-hb03c661_0.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-64/argon2-cffi-bindings-25.1.0-py314h5bd0f2a_2.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-64/at-spi2-atk-2.38.0-h0630a04_3.tar.bz2
@@ -1510,7 +1510,7 @@ environments:
     packages:
       linux-64:
       - conda: https://conda.anaconda.org/conda-forge/linux-64/_openmp_mutex-4.5-7_kmp_llvm.conda
-      - conda: https://conda.anaconda.org/conda-forge/linux-64/acts-core-45.5.1-np2hc5ef2b4_1.conda
+      - conda: https://conda.anaconda.org/conda-forge/linux-64/acts-core-48.2.0-np2h3377b24_0.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-64/alsa-lib-1.2.16.1-hb03c661_0.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-64/argon2-cffi-bindings-25.1.0-py314h5bd0f2a_2.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-64/at-spi2-atk-2.38.0-h0630a04_3.tar.bz2
@@ -2252,7 +2252,7 @@ environments:
     packages:
       linux-64:
       - conda: https://conda.anaconda.org/conda-forge/linux-64/_openmp_mutex-4.5-7_kmp_llvm.conda
-      - conda: https://conda.anaconda.org/conda-forge/linux-64/acts-core-45.5.1-np2hc5ef2b4_1.conda
+      - conda: https://conda.anaconda.org/conda-forge/linux-64/acts-core-48.2.0-np2h3377b24_0.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-64/alsa-lib-1.2.16.1-hb03c661_0.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-64/argon2-cffi-bindings-25.1.0-py314h5bd0f2a_2.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-64/at-spi2-atk-2.38.0-h0630a04_3.tar.bz2
@@ -2994,7 +2994,7 @@ environments:
     packages:
       linux-64:
       - conda: https://conda.anaconda.org/conda-forge/linux-64/_openmp_mutex-4.5-8_kmp_llvm.conda
-      - conda: https://conda.anaconda.org/conda-forge/linux-64/acts-core-45.5.1-np2hc5ef2b4_1.conda
+      - conda: https://conda.anaconda.org/conda-forge/linux-64/acts-core-48.2.0-np2h3377b24_0.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-64/alsa-lib-1.2.16.1-h7cc23a3_1.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-64/argon2-cffi-bindings-26.1.0-py314h89acca1_1.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-64/at-spi2-atk-2.38.0-h0630a04_3.tar.bz2
@@ -3773,20 +3773,20 @@ packages:
     - _openmp_mutex >=4.5
   size: 8050
   timestamp: 1788046427177
-- conda: https://conda.anaconda.org/conda-forge/linux-64/acts-core-45.5.1-np2hc5ef2b4_1.conda
-  sha256: 42a78317620f92310ee227160c88bc9d1ed42dc0ddc79e30ee99a2edf04e58be
-  md5: ef87d92ee984f888dd1495a80fc34767
+- conda: https://conda.anaconda.org/conda-forge/linux-64/acts-core-48.2.0-np2h3377b24_0.conda
+  sha256: 3410f49a0e52139749e64fed9dea7581879d6418d4a90e03b8b0035ab47d932f
+  md5: cc7049757df2ab1ec7cfafa9afd95bc1
   depends:
-  - libstdcxx >=14
-  - libgcc >=14
   - __glibc >=2.17,<3.0.a0
+  - libstdcxx >=15
+  - libgcc >=15
   - libboost >=1.90.0,<1.91.0a0
   license: MPL-2.0
   license_family: MOZILLA
   purls: []
   run_exports: {}
-  size: 3426137
-  timestamp: 1777106066824
+  size: 3954221
+  timestamp: 1792349554292
 - conda: https://conda.anaconda.org/conda-forge/linux-64/alsa-lib-1.2.16.1-h7cc23a3_1.conda
   sha256: a35bddac04be093769e81814465a537961c6ed0f8d3cc23d6dce6ecdfaf71821
   md5: 7094e0d8d14de0eff6d83f0d2f1f661e

@@ -28,7 +28,7 @@ field-service-mapio = ">=0.4.0"
 field-service-acts = ">=0.4.0"
 # generate_constant_fieldmap, used by the smoke test.
 field-service-tools = ">=0.4.0"
-acts-core = "*"
+acts-core = "48.*"
 phlex = ">=0.4.1"
 root = ">=6.36"
 geant4 = ">=11.3"
