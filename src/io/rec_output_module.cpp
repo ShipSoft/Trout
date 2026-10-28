@@ -90,18 +90,26 @@ class SimTruthHistogrammer {
                  std::shared_ptr<SimParticles> const& sim_particles) {
         if (!sim_hits || !sim_particles)
             return;
+        observe_hits(sim_hits);
+        auto& ctxs = ensure_contexts();
+        ctxs.particle_multiplicity->Fill(static_cast<double>(sim_particles->size()));
+        for (auto const& particle : *sim_particles) {
+            ctxs.particle_vtx_x->Fill(particle.vertex[0]);
+            ctxs.particle_vtx_y->Fill(particle.vertex[1]);
+            ctxs.particle_vtx_z->Fill(particle.vertex[2]);
+        }
+    }
+
+    // For when sim_particles aren't read (the particle histograms stay empty).
+    void observe_hits(std::shared_ptr<SimHits> const& sim_hits) {
+        if (!sim_hits)
+            return;
         auto& ctxs = ensure_contexts();
         ctxs.hit_multiplicity->Fill(static_cast<double>(sim_hits->size()));
         for (auto const& hit : *sim_hits) {
             ctxs.hit_x->Fill(hit.position[0]);
             ctxs.hit_y->Fill(hit.position[1]);
             ctxs.hit_z->Fill(hit.position[2]);
-        }
-        ctxs.particle_multiplicity->Fill(static_cast<double>(sim_particles->size()));
-        for (auto const& particle : *sim_particles) {
-            ctxs.particle_vtx_x->Fill(particle.vertex[0]);
-            ctxs.particle_vtx_y->Fill(particle.vertex[1]);
-            ctxs.particle_vtx_z->Fill(particle.vertex[2]);
         }
     }
 
@@ -160,6 +168,9 @@ class RecoNoop {
                  SurroundTaggerObjects const&, CalorimeterObjects const&,
                  TimingDetectorObjects const&, std::shared_ptr<SimHits> const&,
                  std::shared_ptr<SimParticles> const&) {}
+    void observe_without_particles(SpectrometerTracks const&, UpstreamTaggerObjects const&,
+                                   SurroundTaggerObjects const&, CalorimeterObjects const&,
+                                   TimingDetectorObjects const&, std::shared_ptr<SimHits> const&) {}
     void observe_tracks_only(SpectrometerTracks const&, UpstreamTaggerObjects const&,
                              SurroundTaggerObjects const&, CalorimeterObjects const&,
                              TimingDetectorObjects const&) {}
@@ -173,6 +184,8 @@ void register_rec_output(ModuleProxy const& m, phlex::configuration const& confi
         config.get<std::string>("rntuple_file", std::string{"reconstructed_objects.root"});
     auto histo_file = config.get<std::string>("histo_file", std::string{"reco_validation.root"});
     auto isSim = config.get<bool>("simulation", false);
+    // Must match read_digitised_hits' sim_particles.
+    auto simParticles = isSim && config.get<bool>("sim_particles", false);
 
     if (mode != "reco" && mode != "noop")
         throw std::runtime_error("Unknown rec_output_module mode: '" + mode +
@@ -209,9 +222,17 @@ void register_rec_output(ModuleProxy const& m, phlex::configuration const& confi
 
     if (mode == "noop") {
         auto noop = m.make<RecoNoop>();
-        if (isSim) {
+        if (isSim && !simParticles) {
+            noop.observe("noop", &RecoNoop::observe_without_particles, concurrency::unlimited)
+                .input_family(selector("resolve_tracks", "spill", "track_fit_result"),
+                              selector("upstream_tagger_reco", "spill", "upstream_tagger_reco"),
+                              selector("surround_tagger_reco", "spill", "surround_tagger_reco"),
+                              selector("calorimeter_reco", "spill", "calorimeter_reco"),
+                              selector("timing_detector_reco", "spill", "timing_detector_reco"),
+                              passthrough("sim_hits"));
+        } else if (isSim) {
             noop.observe("noop", &RecoNoop::observe, concurrency::unlimited)
-                .input_family(selector("fit_seed", "seed", "track_fit_result"),
+                .input_family(selector("resolve_tracks", "spill", "track_fit_result"),
                               selector("upstream_tagger_reco", "spill", "upstream_tagger_reco"),
                               selector("surround_tagger_reco", "spill", "surround_tagger_reco"),
                               selector("calorimeter_reco", "spill", "calorimeter_reco"),
@@ -219,7 +240,7 @@ void register_rec_output(ModuleProxy const& m, phlex::configuration const& confi
                               passthrough("sim_hits"), passthrough("sim_particles"));
         } else {
             noop.observe("noop", &RecoNoop::observe_tracks_only, concurrency::unlimited)
-                .input_family(selector("fit_seed", "seed", "track_fit_result"),
+                .input_family(selector("resolve_tracks", "spill", "track_fit_result"),
                               selector("upstream_tagger_reco", "spill", "upstream_tagger_reco"),
                               selector("surround_tagger_reco", "spill", "surround_tagger_reco"),
                               selector("calorimeter_reco", "spill", "calorimeter_reco"),
@@ -232,7 +253,7 @@ void register_rec_output(ModuleProxy const& m, phlex::configuration const& confi
 
     register_writer(writer, "write_spectrometer_tracks",
                     &HitRNTupleWriter::write<SHiP::TrackFitResult>,
-                    selector("fit_seed", "seed", "track_fit_result"));
+                    selector("resolve_tracks", "spill", "track_fit_result"));
     register_writer(writer, "write_upstream_tagger", &HitRNTupleWriter::write<SHiP::UBTHit>,
                     selector("upstream_tagger_reco", "spill", "upstream_tagger_reco"));
     register_writer(writer, "write_surround_tagger", &HitRNTupleWriter::write<SHiP::SBTHit>,
@@ -245,9 +266,10 @@ void register_rec_output(ModuleProxy const& m, phlex::configuration const& confi
     if (isSim) {
         register_writer(writer, "write_sim_hits", &HitRNTupleWriter::write_sim<SHiP::SimHit>,
                         passthrough("sim_hits"));
-        register_writer(writer, "write_sim_particles",
-                        &HitRNTupleWriter::write_sim<SHiP::SimParticle>,
-                        passthrough("sim_particles"));
+        if (simParticles)
+            register_writer(writer, "write_sim_particles",
+                            &HitRNTupleWriter::write_sim<SHiP::SimParticle>,
+                            passthrough("sim_particles"));
     }
 
     // One shared output file; each histogrammer below Put()s its own
@@ -256,7 +278,7 @@ void register_rec_output(ModuleProxy const& m, phlex::configuration const& confi
 
     auto spectrometer_histo = m.make<SpectrometerHistogrammer>(histo_file_service);
     register_writer(spectrometer_histo, "validate_spectrometer", &SpectrometerHistogrammer::observe,
-                    selector("fit_seed", "seed", "track_fit_result"));
+                    selector("resolve_tracks", "spill", "track_fit_result"));
 
     auto ubt_histo = m.make<UpstreamTaggerHistogrammer>(histo_file_service);
     register_writer(ubt_histo, "validate_upstream_tagger", &UpstreamTaggerHistogrammer::observe,
@@ -277,9 +299,16 @@ void register_rec_output(ModuleProxy const& m, phlex::configuration const& confi
 
     if (isSim) {
         auto sim_truth_histo = m.make<SimTruthHistogrammer>(histo_file_service);
-        sim_truth_histo
-            .observe("validate_sim_truth", &SimTruthHistogrammer::observe, concurrency::unlimited)
-            .input_family(passthrough("sim_hits"), passthrough("sim_particles"));
+        if (simParticles)
+            sim_truth_histo
+                .observe("validate_sim_truth", &SimTruthHistogrammer::observe,
+                         concurrency::unlimited)
+                .input_family(passthrough("sim_hits"), passthrough("sim_particles"));
+        else
+            sim_truth_histo
+                .observe("validate_sim_truth", &SimTruthHistogrammer::observe_hits,
+                         concurrency::unlimited)
+                .input_family(passthrough("sim_hits"));
     }
 }
 
