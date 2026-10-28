@@ -135,6 +135,10 @@ add_library(
     include/detectors/spectrometer/generate_seeds.hpp
     src/detectors/spectrometer/fit_seed.cpp
     include/detectors/spectrometer/fit_seed.hpp
+    src/detectors/spectrometer/resolve_tracks.cpp
+    include/detectors/spectrometer/resolve_tracks.hpp
+    include/detectors/spectrometer/TrackCandidate.hpp
+    include/io/TimeWindow.hpp
     include/PhlexModuleProxy.hpp
     include/detectors/spectrometer/SpillContext.hpp
     include/detectors/spectrometer/SpectrometerCkf.hpp
