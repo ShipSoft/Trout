@@ -42,6 +42,8 @@
 
 #include <ROOT/RNTupleReader.hxx>
 #include <ROOT/RNTupleView.hxx>
+#include <tuple>
+#include <type_traits>
 
 #include <SHiP/SimHit.hpp>
 #include <SHiP/SimParticle.hpp>
@@ -61,8 +63,6 @@
 #include <spdlog/spdlog.h>
 #include <stdexcept>
 #include <string>
-#include <tuple>
-#include <type_traits>
 #include <utility>
 #include <vector>
 
@@ -140,8 +140,7 @@ class WindowedStream {
 
     std::shared_ptr<std::vector<T>> from_index(double lo, double hi) {
         auto const first = std::ranges::lower_bound(index_, lo, {}, &IndexEntry::time);
-        auto const last =
-            std::ranges::lower_bound(first, index_.end(), hi, {}, &IndexEntry::time);
+        auto const last = std::ranges::lower_bound(first, index_.end(), hi, {}, &IndexEntry::time);
         // Read in file order: friendlier to ROOT's cluster cache than time
         // order, and the same order a streamed window would have.
         std::vector<ROOT::NTupleSize_t> entries;
@@ -228,10 +227,8 @@ void provide_stream(Registrar& m, std::shared_ptr<WindowedStream<T>> stream,
     // window's hits rather than each getting their own.
     m.provide(
          "read_" + suffix,
-         [stream = std::move(stream)](
-             phlex::data_cell_index const& id) -> std::shared_ptr<std::vector<T>> {
-             return stream->window(id.number());
-         },
+         [stream = std::move(stream)](phlex::data_cell_index const& id)
+             -> std::shared_ptr<std::vector<T>> { return stream->window(id.number()); },
          phlex::concurrency::serial)
         .output_product("rntuple_source", phlex::experimental::identifier{suffix}, layer);
 }
@@ -255,8 +252,7 @@ struct WindowedReading {
 template <typename Hit, typename Registrar>
 void provide_hit_type(Registrar& m, WindowedReading const& reading, std::string const& ntuple_name,
                       Slice slice, phlex::experimental::identifier const& layer) {
-    provide_stream(m, reading.stream<Hit>(ntuple_name, time_field<Hit>, slice), ntuple_name,
-                   layer);
+    provide_stream(m, reading.stream<Hit>(ntuple_name, time_field<Hit>, slice), ntuple_name, layer);
 }
 
 }  // namespace
@@ -308,10 +304,10 @@ PHLEX_REGISTER_PROVIDERS(m, config) {
     provide_hit_type<SHiP::UBTHit>(m, reading, "ubt_hits", owned, layer);
     provide_hit_type<SHiP::SBTHit>(m, reading, "sbt_hits", owned, layer);
     provide_hit_type<SHiP::StrawTubesHit>(m, reading, "straw_tubes_hits", window, layer);
-    provide_stream(m,
-                   reading.stream<std::uint64_t>("straw_tubes_hits",
-                                                 time_field<SHiP::StrawTubesHit>, window),
-                   "straw_tubes_hit_ids", layer);
+    provide_stream(
+        m,
+        reading.stream<std::uint64_t>("straw_tubes_hits", time_field<SHiP::StrawTubesHit>, window),
+        "straw_tubes_hit_ids", layer);
     provide_hit_type<SHiP::CaloHit>(m, reading, "calorimeter_hits", owned, layer);
     provide_hit_type<SHiP::TimeDetHit>(m, reading, "timing_detector_hits", owned, layer);
     if (isSim)
