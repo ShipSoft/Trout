@@ -16,7 +16,8 @@ namespace SHiP::trout {
 // CKF candidate branch (SpectrometerCkf::refit(), a real
 // forward+backward-smoothed Acts::KalmanFitter — the CKF exploration itself
 // has no smoother, see SpectrometerCkf.hpp) in a plain loop, returning all
-// of them as one track_fit_result vector.
+// of them, with their hit ids, as one track_candidates vector for
+// resolve_tracks.
 //
 // A seed can yield zero, one, or several CKF candidates, and fit_seed loops
 // over them in plain C++ rather than unfolding them into a third "track"

@@ -7,10 +7,13 @@
 #include <Acts/Definitions/Units.hpp>
 #include <Acts/Geometry/GeometryIdentifier.hpp>
 
+#include <algorithm>
 #include <cmath>
 #include <cstddef>
+#include <cstdint>
 #include <memory>
 #include <optional>
+#include <spdlog/spdlog.h>
 #include <utility>
 #include <vector>
 
@@ -48,12 +51,23 @@ class SeedGenObject {
         // sensitive = station index (1-based).
         auto const station1Id = Acts::GeometryIdentifier{}.withVolume(1).withSensitive(1);
         auto const station2Id = Acts::GeometryIdentifier{}.withVolume(1).withSensitive(2);
+        // Only seed from station-1 hits near what this window owns: the rest
+        // are seeded by the windows owning them (resolve_tracks keeps each
+        // track only in its owner), and seeding them here too would just
+        // repeat the CKF work in every overlapping window.
+        auto const& meas = ctx_->measurements->measurements();
+        double const seedLo = ctx_->seedTimeLo * Acts::UnitConstants::ns;
+        double const seedHi = ctx_->seedTimeHi * Acts::UnitConstants::ns;
         for (auto const& sl :
-             ActsExamples::selectModule(ctx_->measurements->sourceLinks(), station1Id))
-            hits1_.push_back(sl.index());
+             ActsExamples::selectModule(ctx_->measurements->sourceLinks(), station1Id)) {
+            double const t = meas[sl.index()].time;
+            if (t >= seedLo && t < seedHi)
+                hits1_.push_back(sl.index());
+        }
         for (auto const& sl :
              ActsExamples::selectModule(ctx_->measurements->sourceLinks(), station2Id))
             hits2_.push_back(sl.index());
+        log_counts();
     }
 
     std::optional<std::size_t> initial_value() const { return find_next_valid(0); }
@@ -90,6 +104,32 @@ class SeedGenObject {
     }
 
    private:
+    // Diagnostic: how many seeds this window can produce. Counting them
+    // exactly needs the full hits1 x hits2 scan, so count the time-coincident
+    // pairs instead — an upper bound, since it skips the forward cut — in
+    // n1 log n2.
+    void log_counts() const {
+        auto const& meas = ctx_->measurements->measurements();
+        std::vector<double> times2;
+        times2.reserve(hits2_.size());
+        for (auto const idx : hits2_)
+            times2.push_back(meas[idx].time);
+        std::ranges::sort(times2);
+
+        double const window = kTimeWindowNs * Acts::UnitConstants::ns;
+        std::uint64_t pairs = 0;
+        for (auto const idx : hits1_) {
+            double const t = meas[idx].time;
+            pairs += static_cast<std::uint64_t>(std::ranges::upper_bound(times2, t + window) -
+                                                std::ranges::lower_bound(times2, t - window));
+        }
+        auto const& w = ctx_->window;
+        spdlog::info(
+            "generate_seeds: window {} [{}, {}) ns: {} measurements, {} station-1 hits in seed "
+            "range, {} station-2 hits, {} time-coincident pairs (upper bound on seeds)",
+            w.index, w.lo, w.hi, meas.size(), hits1_.size(), hits2_.size(), pairs);
+    }
+
     std::shared_ptr<SpillContext> ctx_;
     std::vector<ActsExamples::Index> hits1_;
     std::vector<ActsExamples::Index> hits2_;
