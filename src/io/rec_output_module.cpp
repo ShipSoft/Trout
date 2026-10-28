@@ -224,7 +224,7 @@ void register_rec_output(ModuleProxy const& m, phlex::configuration const& confi
         auto noop = m.make<RecoNoop>();
         if (isSim && !simParticles) {
             noop.observe("noop", &RecoNoop::observe_without_particles, concurrency::unlimited)
-                .input_family(selector("resolve_tracks", "spill", "track_fit_result"),
+                .input_family(selector("fit_seed", "seed", "track_fit_result"),
                               selector("upstream_tagger_reco", "spill", "upstream_tagger_reco"),
                               selector("surround_tagger_reco", "spill", "surround_tagger_reco"),
                               selector("calorimeter_reco", "spill", "calorimeter_reco"),
@@ -232,7 +232,7 @@ void register_rec_output(ModuleProxy const& m, phlex::configuration const& confi
                               passthrough("sim_hits"));
         } else if (isSim) {
             noop.observe("noop", &RecoNoop::observe, concurrency::unlimited)
-                .input_family(selector("resolve_tracks", "spill", "track_fit_result"),
+                .input_family(selector("fit_seed", "seed", "track_fit_result"),
                               selector("upstream_tagger_reco", "spill", "upstream_tagger_reco"),
                               selector("surround_tagger_reco", "spill", "surround_tagger_reco"),
                               selector("calorimeter_reco", "spill", "calorimeter_reco"),
@@ -240,7 +240,7 @@ void register_rec_output(ModuleProxy const& m, phlex::configuration const& confi
                               passthrough("sim_hits"), passthrough("sim_particles"));
         } else {
             noop.observe("noop", &RecoNoop::observe_tracks_only, concurrency::unlimited)
-                .input_family(selector("resolve_tracks", "spill", "track_fit_result"),
+                .input_family(selector("fit_seed", "seed", "track_fit_result"),
                               selector("upstream_tagger_reco", "spill", "upstream_tagger_reco"),
                               selector("surround_tagger_reco", "spill", "surround_tagger_reco"),
                               selector("calorimeter_reco", "spill", "calorimeter_reco"),
@@ -253,7 +253,7 @@ void register_rec_output(ModuleProxy const& m, phlex::configuration const& confi
 
     register_writer(writer, "write_spectrometer_tracks",
                     &HitRNTupleWriter::write<SHiP::TrackFitResult>,
-                    selector("resolve_tracks", "spill", "track_fit_result"));
+                    selector("fit_seed", "seed", "track_fit_result"));
     register_writer(writer, "write_upstream_tagger", &HitRNTupleWriter::write<SHiP::UBTHit>,
                     selector("upstream_tagger_reco", "spill", "upstream_tagger_reco"));
     register_writer(writer, "write_surround_tagger", &HitRNTupleWriter::write<SHiP::SBTHit>,
@@ -278,7 +278,7 @@ void register_rec_output(ModuleProxy const& m, phlex::configuration const& confi
 
     auto spectrometer_histo = m.make<SpectrometerHistogrammer>(histo_file_service);
     register_writer(spectrometer_histo, "validate_spectrometer", &SpectrometerHistogrammer::observe,
-                    selector("resolve_tracks", "spill", "track_fit_result"));
+                    selector("fit_seed", "seed", "track_fit_result"));
 
     auto ubt_histo = m.make<UpstreamTaggerHistogrammer>(histo_file_service);
     register_writer(ubt_histo, "validate_upstream_tagger", &UpstreamTaggerHistogrammer::observe,

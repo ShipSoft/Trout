@@ -16,11 +16,6 @@ function(params)
     window_ns: 3000,
     step_ns: 1000,
     max_lag_ns: 1000,
-    // Station-1 hits up to this far outside a window's owned slice are still
-    // seeded from, as context for duplicate removal.
-    seed_margin_ns: 1000,
-    // Tracks sharing more hits than this are duplicates; the best is kept.
-    max_shared_hits: 1,
     // Path to shannon's digitised-hit output (or a make_test_input file).
     input_file: error 'input_file is required',
     db_file: '../geometry/my_ship_geometry.db',
@@ -74,8 +69,6 @@ function(params)
       spectrometer_tracking: {
         cpp: 'spectrometer_tracking',
         layer: 'spill',
-        seed_margin_ns: p.seed_margin_ns,
-        max_shared_hits: p.max_shared_hits,
       },
       rec_output: {
         cpp: 'rec_output_module',
