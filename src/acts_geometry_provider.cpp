@@ -189,11 +189,11 @@ std::shared_ptr<Acts::TrackingGeometry> build_tracking_geometry(G4VPhysicalVolum
     // protection does nothing in a field-free region), and the growing steps
     // run the position off to infinity. The envelope gives the world volume
     // room around this one, so leaving it ends the propagation.
-    Acts::Experimental::Blueprint::Config blueprintCfg;
+    Acts::Blueprint::Config blueprintCfg;
     double const envelope = margin_mm * Acts::UnitConstants::mm;
     blueprintCfg.envelope = Acts::ExtentEnvelope{
         {.x = {envelope, envelope}, .y = {envelope, envelope}, .z = {envelope, envelope}}};
-    auto root = std::make_unique<Acts::Experimental::Blueprint>(blueprintCfg);
+    auto root = std::make_unique<Acts::Blueprint>(blueprintCfg);
     root->addStaticVolume(std::move(worldVolume), [](auto& node) {
         Acts::TryAllNavigationPolicy::Config navPolicyCfg;
         navPolicyCfg.portals = true;
@@ -204,7 +204,7 @@ std::shared_ptr<Acts::TrackingGeometry> build_tracking_geometry(G4VPhysicalVolum
                 .asUniquePtr()));
     });
 
-    Acts::Experimental::BlueprintOptions blueprintOptions;
+    Acts::BlueprintOptions blueprintOptions;
     auto gctx = Acts::GeometryContext::dangerouslyDefaultConstruct();
     return root->construct(blueprintOptions, gctx);
 }

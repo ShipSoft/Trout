@@ -24,7 +24,7 @@ find_package(SHiPGeometry CONFIG REQUIRED)
 find_package(SHiPGeometryService 0.6 CONFIG REQUIRED)
 find_package(SHiPDataModel 0.6 REQUIRED)
 find_package(SHiPFieldService 0.4 REQUIRED COMPONENTS MapIO ActsAdapter)
-find_package(Acts CONFIG REQUIRED)
+find_package(Acts 48 CONFIG REQUIRED)
 
 find_package(Boost REQUIRED COMPONENTS json)
 find_package(TBB REQUIRED)
