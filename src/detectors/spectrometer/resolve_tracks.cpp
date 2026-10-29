@@ -6,13 +6,14 @@
 
 #include "detectors/spectrometer/SpillContext.hpp"
 
+#include <tuple>
+
 #include <algorithm>
 #include <cmath>
 #include <cstdint>
 #include <limits>
 #include <memory>
 #include <numeric>
-#include <tuple>
 #include <vector>
 
 namespace SHiP::trout {
@@ -65,9 +66,8 @@ std::vector<SHiP::TrackFitResult> resolve_tracks(std::vector<TrackCandidate> con
                                                  std::size_t maxSharedHits) {
     std::vector<std::size_t> order(candidates.size());
     std::iota(order.begin(), order.end(), std::size_t{0});
-    std::ranges::sort(order, [&](std::size_t a, std::size_t b) {
-        return better(candidates[a], candidates[b]);
-    });
+    std::ranges::sort(
+        order, [&](std::size_t a, std::size_t b) { return better(candidates[a], candidates[b]); });
 
     std::vector<TrackCandidate const*> accepted;
     for (auto const i : order) {
@@ -104,9 +104,9 @@ void register_resolve_tracks(ModuleProxy const& m, std::string const& layerName,
 
     m.transform(
          "resolve_tracks",
-         [maxSharedHits](std::vector<TrackCandidate> const& candidates,
-                         std::shared_ptr<SpillContext> const& ctx)
-             -> std::vector<SHiP::TrackFitResult> {
+         [maxSharedHits](
+             std::vector<TrackCandidate> const& candidates,
+             std::shared_ptr<SpillContext> const& ctx) -> std::vector<SHiP::TrackFitResult> {
              if (!ctx)
                  return {};
              return resolve_tracks(candidates, ctx->window, maxSharedHits);

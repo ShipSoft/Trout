@@ -23,16 +23,16 @@ void register_prepare_measurements(ModuleProxy const& m,
                                    double seedMarginNs) {
     m.transform(
          "prepare_measurements",
-         [seedMarginNs](std::shared_ptr<std::vector<SHiP::StrawTubesHit>> const& ip,
-            std::shared_ptr<std::vector<std::uint64_t>> const& ids, TimeWindow const& window,
-            std::shared_ptr<DetectorGeometry> const& detector,
-            std::shared_ptr<DetectorField> const& field) -> std::shared_ptr<SpillContext> {
+         [seedMarginNs](
+             std::shared_ptr<std::vector<SHiP::StrawTubesHit>> const& ip,
+             std::shared_ptr<std::vector<std::uint64_t>> const& ids, TimeWindow const& window,
+             std::shared_ptr<DetectorGeometry> const& detector,
+             std::shared_ptr<DetectorField> const& field) -> std::shared_ptr<SpillContext> {
              auto ctx = std::make_shared<SpillContext>();
              ctx->window = window;
              ctx->seedTimeLo = window.own_lo - seedMarginNs;
              ctx->seedTimeHi = window.own_hi + seedMarginNs;
-             if (!ip || !ids || !detector || !detector->trackingGeometry || !field ||
-                 !field->field)
+             if (!ip || !ids || !detector || !detector->trackingGeometry || !field || !field->field)
                  return ctx;
 
              std::vector<SHiP::RecHit> hits;
