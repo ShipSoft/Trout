@@ -28,7 +28,10 @@
 #include <SHiP/RecHit.hpp>
 #include <array>
 #include <cmath>
+#include <cstddef>
+#include <cstdint>
 #include <limits>
+#include <stdexcept>
 #include <utility>
 #include <vector>
 
@@ -44,6 +47,9 @@ class SpectrometerMeasurements {
         Acts::Vector2 local;
         Acts::SquareMatrix2 covariance;
         double time;  // ns, for the time-coincidence cut in seeding
+        // The hit's id across the whole input (its entry in the straw-tube
+        // RNTuple), the same in every window it appears in.
+        std::uint64_t hitId;
     };
 
     // zWindowMm: a hit is assigned to the nearest station surface only if
@@ -51,15 +57,20 @@ class SpectrometerMeasurements {
     // now applied per-hit instead of picking a single best hit per station.
     // The same value is reused as the on-surface tolerance for globalToLocal,
     // since both express "how far off the station plane a hit may sit".
+    // hitIds[i] is the id of hits[i] (see Measurement::hitId).
     SpectrometerMeasurements(const Acts::TrackingGeometry& geometry,
                              const Acts::GeometryContext& gctx,
-                             const std::vector<SHiP::RecHit>& hits, double zWindowMm = 510.0) {
+                             const std::vector<SHiP::RecHit>& hits,
+                             const std::vector<std::uint64_t>& hitIds, double zWindowMm = 510.0) {
+        if (hitIds.size() != hits.size())
+            throw std::invalid_argument("SpectrometerMeasurements: need one id per hit");
         double const zWindow = zWindowMm * Acts::UnitConstants::mm;
         std::vector<std::pair<const Acts::Surface*, double>> stationSurfaces;
         geometry.visitSurfaces(
             [&](const Acts::Surface* s) { stationSurfaces.emplace_back(s, s->center(gctx).z()); });
 
-        for (auto const& hit : hits) {
+        for (std::size_t h = 0; h < hits.size(); ++h) {
+            auto const& hit = hits[h];
             Acts::Vector3 const global(hit.position[0] * Acts::UnitConstants::mm,
                                        hit.position[1] * Acts::UnitConstants::mm,
                                        hit.position[2] * Acts::UnitConstants::mm);
@@ -81,7 +92,8 @@ class SpectrometerMeasurements {
             double const time = hit.time * Acts::UnitConstants::ns;
             auto const cov = hitCovariance(HitUncertaintyContext{global, time});
             auto const idx = static_cast<ActsExamples::Index>(m_measurements.size());
-            m_measurements.push_back(Measurement{best, global, locRes.value(), cov, time});
+            m_measurements.push_back(
+                Measurement{best, global, locRes.value(), cov, time, hitIds[h]});
             m_sourceLinks.emplace(best->geometryId(), idx);
         }
     }
@@ -109,6 +121,35 @@ class SpectrometerMeasurements {
         // needs it to recover which measurement index a CKF-found state
         // corresponds to.
         ts.setUncalibratedSourceLink(Acts::SourceLink{sl});
+    }
+
+    template <typename TrackStateProxy>
+    Acts::Result<std::pair<typename std::vector<TrackStateProxy>::iterator,
+                           typename std::vector<TrackStateProxy>::iterator>>
+    selectNearestInTimeGate(std::vector<TrackStateProxy>& candidates, bool& isOutlier,
+                            const Acts::Logger&) const {
+        isOutlier = false;
+        auto best = candidates.end();
+        double bestDist2 = std::numeric_limits<double>::max();
+        for (auto it = candidates.begin(); it != candidates.end(); ++it) {
+            auto const pred = it->predicted();
+            auto const sl = it->getUncalibratedSourceLink().template get<IndexSourceLink>();
+            if (std::abs(m_measurements[sl.index()].time - pred[Acts::eBoundTime]) >
+                strawHitTimeSelection)
+                continue;
+            auto const meas = it->template calibrated<2>();
+            double const dx = pred[Acts::eBoundLoc0] - meas[0];
+            double const dy = pred[Acts::eBoundLoc1] - meas[1];
+            double const dist2 = dx * dx + dy * dy;
+            if (dist2 < bestDist2) {
+                bestDist2 = dist2;
+                best = it;
+            }
+        }
+        if (best == candidates.end())  // nothing in time: no hit on this surface
+            return std::pair{candidates.begin(), candidates.begin()};
+        std::iter_swap(candidates.begin(), best);
+        return std::pair{candidates.begin(), std::next(candidates.begin())};
     }
 
    private:

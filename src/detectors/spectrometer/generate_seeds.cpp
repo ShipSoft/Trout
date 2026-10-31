@@ -4,22 +4,24 @@
 
 #include "detectors/spectrometer/generate_seeds.hpp"
 
+#include "detectors/spectrometer/HitUncertainty.hpp"
+
 #include <Acts/Definitions/Units.hpp>
 #include <Acts/Geometry/GeometryIdentifier.hpp>
 
+#include <algorithm>
 #include <cmath>
 #include <cstddef>
+#include <cstdint>
 #include <memory>
 #include <optional>
+#include <spdlog/spdlog.h>
 #include <utility>
 #include <vector>
 
 namespace SHiP::trout {
 
 namespace {
-
-// Same coincidence window used for the equivalent cut in keep_tracks.cpp.
-constexpr double kTimeWindowNs = 5.0;
 
 // Minimum cos(angle from the beam/z axis) a station1->station2 pair's
 // implied direction must have to be considered a plausible seed. With
@@ -48,12 +50,23 @@ class SeedGenObject {
         // sensitive = station index (1-based).
         auto const station1Id = Acts::GeometryIdentifier{}.withVolume(1).withSensitive(1);
         auto const station2Id = Acts::GeometryIdentifier{}.withVolume(1).withSensitive(2);
+        // Only seed from station-1 hits near what this window owns: the rest
+        // are seeded by the windows owning them (resolve_tracks keeps each
+        // track only in its owner), and seeding them here too would just
+        // repeat the CKF work in every overlapping window.
+        auto const& meas = ctx_->measurements->measurements();
+        double const seedLo = ctx_->seedTimeLo * Acts::UnitConstants::ns;
+        double const seedHi = ctx_->seedTimeHi * Acts::UnitConstants::ns;
         for (auto const& sl :
-             ActsExamples::selectModule(ctx_->measurements->sourceLinks(), station1Id))
-            hits1_.push_back(sl.index());
+             ActsExamples::selectModule(ctx_->measurements->sourceLinks(), station1Id)) {
+            double const t = meas[sl.index()].time;
+            if (t >= seedLo && t < seedHi)
+                hits1_.push_back(sl.index());
+        }
         for (auto const& sl :
              ActsExamples::selectModule(ctx_->measurements->sourceLinks(), station2Id))
             hits2_.push_back(sl.index());
+        log_counts();
     }
 
     std::optional<std::size_t> initial_value() const { return find_next_valid(0); }
@@ -67,14 +80,17 @@ class SeedGenObject {
             return std::nullopt;
         auto const& meas = ctx_->measurements->measurements();
         auto const total = hits1_.size() * hits2_.size();
-        double const window = kTimeWindowNs * Acts::UnitConstants::ns;
+
         for (std::size_t k = from; k < total; ++k) {
             auto const i = k / hits2_.size();
             auto const j = k % hits2_.size();
             auto const& m0 = meas[hits1_[i]];
             auto const& m1 = meas[hits2_[j]];
-            double const dt = std::abs(m0.time - m1.time);
-            if (dt > window)
+            double const dt = std::abs(
+                (m1.time - m0.time) -
+                (m1.global - m0.global).norm());  // This is the time difference with the expected
+                                                  // from straight line flight at c
+            if (dt > strawHitTimeSelection)
                 continue;
             Acts::Vector3 const dir = (m1.global - m0.global).normalized();
             if (dir.z() >= kMinForwardCosine)
@@ -90,6 +106,32 @@ class SeedGenObject {
     }
 
    private:
+    // Diagnostic: how many seeds this window can produce. Counting them
+    // exactly needs the full hits1 x hits2 scan, so count the time-coincident
+    // pairs instead — an upper bound, since it skips the forward cut — in
+    // n1 log n2.
+    void log_counts() const {
+        auto const& meas = ctx_->measurements->measurements();
+        std::vector<double> times2;
+        times2.reserve(hits2_.size());
+        for (auto const idx : hits2_)
+            times2.push_back(meas[idx].time);
+        std::ranges::sort(times2);
+
+        std::uint64_t pairs = 0;
+        for (auto const idx : hits1_) {
+            double const t = meas[idx].time;
+            pairs += static_cast<std::uint64_t>(
+                std::ranges::upper_bound(times2, t + strawHitTimeSelection) -
+                std::ranges::lower_bound(times2, t - strawHitTimeSelection));
+        }
+        auto const& w = ctx_->window;
+        spdlog::info(
+            "generate_seeds: window {} [{}, {}) ns: {} measurements, {} station-1 hits in seed "
+            "range, {} station-2 hits, {} time-coincident pairs (upper bound on seeds)",
+            w.index, w.lo, w.hi, meas.size(), hits1_.size(), hits2_.size(), pairs);
+    }
+
     std::shared_ptr<SpillContext> ctx_;
     std::vector<ActsExamples::Index> hits1_;
     std::vector<ActsExamples::Index> hits2_;

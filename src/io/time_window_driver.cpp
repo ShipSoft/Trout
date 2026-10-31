@@ -40,8 +40,8 @@ PHLEX_REGISTER_DRIVER(d, config) {
     // Same defaults as read_digitised_hits.
     auto const simulation = config.get<bool>("simulation", false);
     auto const sim_particles = simulation && config.get<bool>("sim_particles", false);
-    auto const window_ns = config.get<double>("window_ns", 3000.0);
-    auto const step_ns = config.get<double>("step_ns", 1000.0);
+    auto const window_ns = config.get<double>("window_ns", 6500.0);
+    auto const step_ns = config.get<double>("step_ns", 2000.0);
 
     auto const scan = SHiP::trout::scan_input(
         input_file, SHiP::trout::digitised_ntuples(simulation, sim_particles), window_ns, step_ns);
