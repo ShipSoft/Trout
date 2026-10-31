@@ -265,8 +265,8 @@ PHLEX_REGISTER_PROVIDERS(m, config) {
     // of magnitude more entries than all the hits together, and nothing in
     // reconstruction uses them.
     auto const simParticles = isSim && config.get<bool>("sim_particles", false);
-    auto const window_ns = config.get<double>("window_ns", 3000.0);
-    auto const step_ns = config.get<double>("step_ns", 1000.0);
+    auto const window_ns = config.get<double>("window_ns", 6500.0);
+    auto const step_ns = config.get<double>("step_ns", 2000.0);
     auto const max_lag_ns = config.get<double>("max_lag_ns", 1000.0);
     if (!(max_lag_ns >= 0.0))
         throw std::invalid_argument("read_digitised_hits: max_lag_ns must be >= 0");

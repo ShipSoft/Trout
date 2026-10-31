@@ -123,9 +123,6 @@ class SpectrometerMeasurements {
         ts.setUncalibratedSourceLink(Acts::SourceLink{sl});
     }
 
-    // Hits further than this from the track's predicted time can't belong to it.
-    static constexpr double kHitTimeGate = 10.0 * Acts::UnitConstants::ns;
-
     template <typename TrackStateProxy>
     Acts::Result<std::pair<typename std::vector<TrackStateProxy>::iterator,
                            typename std::vector<TrackStateProxy>::iterator>>
@@ -137,7 +134,8 @@ class SpectrometerMeasurements {
         for (auto it = candidates.begin(); it != candidates.end(); ++it) {
             auto const pred = it->predicted();
             auto const sl = it->getUncalibratedSourceLink().template get<IndexSourceLink>();
-            if (std::abs(m_measurements[sl.index()].time - pred[Acts::eBoundTime]) > kHitTimeGate)
+            if (std::abs(m_measurements[sl.index()].time - pred[Acts::eBoundTime]) >
+                strawHitTimeSelection)
                 continue;
             auto const meas = it->template calibrated<2>();
             double const dx = pred[Acts::eBoundLoc0] - meas[0];
