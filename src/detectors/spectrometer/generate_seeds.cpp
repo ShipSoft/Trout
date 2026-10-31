@@ -22,7 +22,7 @@ namespace SHiP::trout {
 namespace {
 
 // Same coincidence window used for the equivalent cut in keep_tracks.cpp.
-constexpr double kTimeWindowNs = 5.0;
+constexpr double kTimeWindowNs = 5000.0;
 
 // Minimum cos(angle from the beam/z axis) a station1->station2 pair's
 // implied direction must have to be considered a plausible seed. With
