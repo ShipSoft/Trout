@@ -4,6 +4,8 @@
 
 #include "detectors/spectrometer/generate_seeds.hpp"
 
+#include "detectors/spectrometer/HitUncertainty.hpp"
+
 #include <Acts/Definitions/Units.hpp>
 #include <Acts/Geometry/GeometryIdentifier.hpp>
 
@@ -20,9 +22,6 @@
 namespace SHiP::trout {
 
 namespace {
-
-// Same coincidence window used for the equivalent cut in keep_tracks.cpp.
-constexpr double kTimeWindowNs = 5000.0;
 
 // Minimum cos(angle from the beam/z axis) a station1->station2 pair's
 // implied direction must have to be considered a plausible seed. With
@@ -81,14 +80,17 @@ class SeedGenObject {
             return std::nullopt;
         auto const& meas = ctx_->measurements->measurements();
         auto const total = hits1_.size() * hits2_.size();
-        double const window = kTimeWindowNs * Acts::UnitConstants::ns;
+
         for (std::size_t k = from; k < total; ++k) {
             auto const i = k / hits2_.size();
             auto const j = k % hits2_.size();
             auto const& m0 = meas[hits1_[i]];
             auto const& m1 = meas[hits2_[j]];
-            double const dt = std::abs(m0.time - m1.time);
-            if (dt > window)
+            double const dt = std::abs(
+                (m1.time - m0.time) -
+                (m1.global - m0.global).norm());  // This is the time difference with the expected
+                                                  // from straight line flight at c
+            if (dt > strawHitTimeSelection)
                 continue;
             Acts::Vector3 const dir = (m1.global - m0.global).normalized();
             if (dir.z() >= kMinForwardCosine)
@@ -116,12 +118,12 @@ class SeedGenObject {
             times2.push_back(meas[idx].time);
         std::ranges::sort(times2);
 
-        double const window = kTimeWindowNs * Acts::UnitConstants::ns;
         std::uint64_t pairs = 0;
         for (auto const idx : hits1_) {
             double const t = meas[idx].time;
-            pairs += static_cast<std::uint64_t>(std::ranges::upper_bound(times2, t + window) -
-                                                std::ranges::lower_bound(times2, t - window));
+            pairs += static_cast<std::uint64_t>(
+                std::ranges::upper_bound(times2, t + strawHitTimeSelection) -
+                std::ranges::lower_bound(times2, t - strawHitTimeSelection));
         }
         auto const& w = ctx_->window;
         spdlog::info(

@@ -26,7 +26,7 @@
 // for the underlying ACTS track-finding/fitting engine all of them share.
 //
 // Configuration:
-//   seed_margin_ns  (default 1000) how far outside the window's owned slice
+//   seed_margin_ns  (default 2000) how far outside the window's owned slice
 //                   station-1 hits are still seeded from; tracks found there
 //                   only serve as context for resolve_tracks.
 //   max_shared_hits (default 1) tracks sharing more hits than this are
@@ -47,7 +47,7 @@ PHLEX_REGISTER_ALGORITHMS(m, config) {
     auto const layer = phlex::experimental::identifier{layerName};
     auto const seedLayerName = std::string{"seed"};
     auto const seedLayer = phlex::experimental::identifier{seedLayerName};
-    auto const seedMarginNs = config.get<double>("seed_margin_ns", 1000.0);
+    auto const seedMarginNs = config.get<double>("seed_margin_ns", 2000.0);
     auto const maxSharedHits = config.get<int>("max_shared_hits", 1);
     if (!(seedMarginNs >= 0.0) || maxSharedHits < 0)
         throw std::invalid_argument(

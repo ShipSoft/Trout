@@ -12,8 +12,10 @@
 
 #include <SHiP/RecHit.hpp>
 #include <SHiP/detectors/StrawTubesHit.hpp>
+#include <cmath>
 #include <cstdint>
 #include <memory>
+#include <stdexcept>
 #include <vector>
 
 namespace SHiP::trout {
@@ -32,6 +34,13 @@ void register_prepare_measurements(ModuleProxy const& m,
              ctx->window = window;
              ctx->seedTimeLo = window.own_lo - seedMarginNs;
              ctx->seedTimeHi = window.own_hi + seedMarginNs;
+
+             // A track owned near the end of the slice must still fit inside the window.
+             if (std::isfinite(window.own_hi) &&
+                 (window.hi - window.own_hi) * Acts::UnitConstants::ns < strawHitTimeSelection)
+                 throw std::invalid_argument(
+                     "window margin is smaller than the straw hit time selection");
+
              if (!ip || !ids || !detector || !detector->trackingGeometry || !field || !field->field)
                  return ctx;
 
