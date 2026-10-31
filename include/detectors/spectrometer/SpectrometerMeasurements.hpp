@@ -123,6 +123,37 @@ class SpectrometerMeasurements {
         ts.setUncalibratedSourceLink(Acts::SourceLink{sl});
     }
 
+    // Hits further than this from the track's predicted time can't belong to it.
+    static constexpr double kHitTimeGate = 10.0 * Acts::UnitConstants::ns;
+
+    template <typename TrackStateProxy>
+    Acts::Result<std::pair<typename std::vector<TrackStateProxy>::iterator,
+                           typename std::vector<TrackStateProxy>::iterator>>
+    selectNearestInTimeGate(std::vector<TrackStateProxy>& candidates, bool& isOutlier,
+                            const Acts::Logger&) const {
+        isOutlier = false;
+        auto best = candidates.end();
+        double bestDist2 = std::numeric_limits<double>::max();
+        for (auto it = candidates.begin(); it != candidates.end(); ++it) {
+            auto const pred = it->predicted();
+            auto const sl = it->getUncalibratedSourceLink().template get<IndexSourceLink>();
+            if (std::abs(m_measurements[sl.index()].time - pred[Acts::eBoundTime]) > kHitTimeGate)
+                continue;
+            auto const meas = it->template calibrated<2>();
+            double const dx = pred[Acts::eBoundLoc0] - meas[0];
+            double const dy = pred[Acts::eBoundLoc1] - meas[1];
+            double const dist2 = dx * dx + dy * dy;
+            if (dist2 < bestDist2) {
+                bestDist2 = dist2;
+                best = it;
+            }
+        }
+        if (best == candidates.end())  // nothing in time: no hit on this surface
+            return std::pair{candidates.begin(), candidates.begin()};
+        std::iter_swap(candidates.begin(), best);
+        return std::pair{candidates.begin(), std::next(candidates.begin())};
+    }
+
    private:
     std::vector<Measurement> m_measurements;
     ActsExamples::GeometryIdMultiset<IndexSourceLink> m_sourceLinks;
