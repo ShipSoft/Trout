@@ -178,8 +178,8 @@ int main(int argc, char* argv[]) {
                         sim_hit.track_id = -1;
                         sim_hit.position = {x_ref + slope_x * (z - z_ref),
                                             y_ref + slope_y * (z - z_ref), z};
-                        sim_hit.time = track_time + (z - stat_z.front()) / speed_of_light +
-                                       noise_offset_ns;
+                        sim_hit.time =
+                            track_time + (z - stat_z.front()) / speed_of_light + noise_offset_ns;
                         writers.get<SHiP::SimHit>().write(sim_hit);
                         SHiP::StrawTubesHit hit;
                         hit.rec_hit = SHiP::from_sim_hit(sim_hit);
