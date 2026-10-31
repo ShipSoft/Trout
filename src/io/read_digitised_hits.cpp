@@ -273,7 +273,7 @@ PHLEX_REGISTER_PROVIDERS(m, config) {
 
     // time_window_driver runs the same scan with the same settings to decide
     // how many "spill" data cells to emit, so the two agree on the windows.
-    auto const [scans, all, windowing] = SHiP::trout::scan_input(
+    auto const& [scans, all, windowing] = SHiP::trout::scan_input(
         input_file, SHiP::trout::digitised_ntuples(isSim, simParticles), window_ns, step_ns);
     spdlog::info(
         "read_digitised_hits: hits span [{}, {}] ns, giving {} windows of {} ns every {} ns",
