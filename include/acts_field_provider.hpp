@@ -6,14 +6,22 @@
 
 #include <Acts/MagneticField/MagneticFieldProvider.hpp>
 
+#include <array>
 #include <memory>
+#include <string>
 
 namespace SHiP::trout {
 
-// Output of the acts_field_provider phlex module, mirroring DetectorGeometry
-// (acts_geometry_provider.hpp): the field is loaded once and shared as a
-// single product, rather than every consumer loading its own copy.
+// The spectrometer's magnetic field, registered as a phlex resource by the
+// acts_field_provider plugin, like DetectorGeometry (acts_geometry_provider.hpp):
+// the map is loaded once and shared, rather than every consumer loading its own
+// copy.
 struct DetectorField {
+    // Loads map `map` from `file`, with the map's origin placed at
+    // `translation` (mm) in the global frame. Defined in acts_field_provider.cpp.
+    DetectorField(std::string const& file, std::string const& map,
+                  std::array<double, 3> const& translation);
+
     std::shared_ptr<Acts::MagneticFieldProvider> field;
 };
 

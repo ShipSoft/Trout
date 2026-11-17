@@ -7,6 +7,7 @@
 #include "acts_field_provider.hpp"
 #include "acts_geometry_provider.hpp"
 #include "detectors/spectrometer/SpillContext.hpp"
+#include "phlex/core/resource_api.hpp"
 
 #include <Acts/Geometry/GeometryContext.hpp>
 
@@ -25,11 +26,10 @@ void register_prepare_measurements(ModuleProxy const& m,
                                    double seedMarginNs) {
     m.transform(
          "prepare_measurements",
-         [seedMarginNs](
-             std::shared_ptr<std::vector<SHiP::StrawTubesHit>> const& ip,
-             std::shared_ptr<std::vector<std::uint64_t>> const& ids, TimeWindow const& window,
-             std::shared_ptr<DetectorGeometry> const& detector,
-             std::shared_ptr<DetectorField> const& field) -> std::shared_ptr<SpillContext> {
+         [seedMarginNs](std::shared_ptr<std::vector<SHiP::StrawTubesHit>> const& ip,
+                        std::shared_ptr<std::vector<std::uint64_t>> const& ids,
+                        TimeWindow const& window, DetectorGeometry const* detector,
+                        DetectorField const* field) -> std::shared_ptr<SpillContext> {
              auto ctx = std::make_shared<SpillContext>();
              ctx->window = window;
              ctx->seedTimeLo = window.own_lo - seedMarginNs;
@@ -41,7 +41,7 @@ void register_prepare_measurements(ModuleProxy const& m,
                  throw std::invalid_argument(
                      "window margin is smaller than the straw hit time selection");
 
-             if (!ip || !ids || !detector || !detector->trackingGeometry || !field || !field->field)
+             if (!ip || !ids)
                  return ctx;
 
              std::vector<SHiP::RecHit> hits;
@@ -63,10 +63,7 @@ void register_prepare_measurements(ModuleProxy const& m,
                 .creator = "rntuple_source", .layer = layer, .suffix = "straw_tubes_hit_ids"},
             phlex::product_selector{
                 .creator = "rntuple_source", .layer = layer, .suffix = "window"},
-            phlex::product_selector{
-                .creator = "tracking_geometry", .layer = "job", .suffix = "detector"},
-            phlex::product_selector{
-                .creator = "spectrometer_field", .layer = "job", .suffix = "field"})
+            phlex::resource<DetectorGeometry>{}, phlex::resource<DetectorField>{})
         .output_product_suffixes("spill_context");
 }
 

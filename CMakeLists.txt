@@ -83,26 +83,26 @@ target_link_libraries(
         spdlog::spdlog
 )
 
-# ACTS tracking-geometry provider plugin (builds Acts::TrackingGeometry for
+# ACTS tracking-geometry resource plugin (builds Acts::TrackingGeometry for
 # the straw-tube stations from the real SHiP geometry via SHiP::GeometryService)
 add_library(acts_geometry_provider MODULE src/acts_geometry_provider.cpp)
 target_link_libraries(
     acts_geometry_provider
-    PRIVATE phlex::module SHiP::GeometryService Acts::Core
+    PRIVATE phlex::resource SHiP::GeometryService Acts::Core
 )
 target_include_directories(
     acts_geometry_provider
     PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/include"
 )
 
-# ACTS magnetic-field provider plugin (loads the spectrometer's field map once
-# and shares it as an Acts::MagneticFieldProvider product, the same "build
-# once on layer job" pattern as acts_geometry_provider above)
+# ACTS magnetic-field resource plugin (loads the spectrometer's field map once
+# and shares it as an Acts::MagneticFieldProvider resource, like
+# acts_geometry_provider above)
 add_library(acts_field_provider MODULE src/acts_field_provider.cpp)
 target_link_libraries(
     acts_field_provider
     PRIVATE
-        phlex::module
+        phlex::resource
         SHiP::FieldServiceMapIO
         SHiP::FieldServiceActsAdapter
         spdlog::spdlog

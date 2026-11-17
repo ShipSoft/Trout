@@ -63,6 +63,11 @@ function(params)
         step_ns: p.step_ns,
         max_lag_ns: p.max_lag_ns,
       },
+    },
+
+    // Built once before any module loads and shared by the algorithms that
+    // declare them (phlex resources).
+    resources: {
       tracking_geometry: {
         cpp: 'acts_geometry_provider',
         db_file: p.db_file,
