@@ -11,8 +11,8 @@
 // lives in its own file — this one just wires them together, in order:
 //
 //   1. prepare_measurements.{hpp,cpp} — spill layer, transform.
-//        straw_tubes_hits + tracking_geometry -> SpillContext, built once
-//        per spill and shared read-only by every seed below.
+//        straw_tubes_hits + the geometry and field resources -> SpillContext,
+//        built once per spill and shared read-only by every seed below.
 //   2. generate_seeds.{hpp,cpp} — spill layer, unfold -> "seed" layer.
 //        Seeding: pairs station-1/station-2 hits into candidate seeds.
 //   3. fit_seed.{hpp,cpp} — seed layer, transform.

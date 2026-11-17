@@ -2,13 +2,14 @@
 //
 // SPDX-License-Identifier: LGPL-3.0-or-later
 
-// acts_geometry_provider.cpp — Phlex provider plugin
+// acts_geometry_provider.cpp — Phlex resource plugin
 //
 // Builds a minimal ACTS tracking geometry for the straw-tube spectrometer
 // from the real SHiP geometry (via SHiP::GeometryService), replacing the
 // hardcoded plane z-positions in ToyDetector/keep_tracks.cpp. One
 // Acts::PlaneSurface per tracker station (/SHiP/trackers/station_1..4),
-// positioned at each station's real global placement.
+// positioned at each station's real global placement. The result is
+// registered as the DetectorGeometry resource.
 //
 // G4LogicalVolumeStore (used elsewhere, e.g. aegir's detector_construction)
 // only carries shape/material, not placement — so unlike that pattern, this
@@ -20,9 +21,7 @@
 
 #include "SHiP/GeometryService/GeometryThread.h"
 #include "phlex/configuration.hpp"
-#include "phlex/model/data_cell_index.hpp"
-#include "phlex/module.hpp"
-#include "phlex/source.hpp"
+#include "phlex/resource.hpp"
 
 #include <G4GeometryManager.hh>
 #include <G4LogicalVolume.hh>
@@ -209,65 +208,57 @@ std::shared_ptr<Acts::TrackingGeometry> build_tracking_geometry(G4VPhysicalVolum
     return root->construct(blueprintOptions, gctx);
 }
 
+// A bare or relative filename that does not exist resolves under
+// $SHIPGEOMETRY_ROOT/share/geometry, the same convention as aegir's
+// geometry_geomodel_provider.
+std::string resolve_db_file(std::string const& db_file) {
+    if (std::filesystem::exists(db_file))
+        return db_file;
+    auto resolved = std::filesystem::path(db_file).filename();
+    if (auto const* root = std::getenv("SHIPGEOMETRY_ROOT"))
+        resolved = std::filesystem::path(root) / "share" / "geometry" / resolved;
+    if (!std::filesystem::exists(resolved))
+        throw std::runtime_error("acts_geometry_provider: cannot locate geometry DB '" + db_file +
+                                 "'; set SHIPGEOMETRY_ROOT or provide an absolute path");
+    return resolved.string();
+}
+
+}  // namespace
+
+namespace SHiP::trout {
+
+DetectorGeometry::DetectorGeometry(std::string const& dbFile) {
+    auto const path = resolve_db_file(dbFile);
+    SHiP::geometry_thread().run([&] {
+        geometryService = SHiP::GeometryService::sharedFromFile(path);
+        // Throws if the GeoModel->G4 conversion fails.
+        auto& worldLV = geometryService->geant4WorldLogical();
+        // Registered in (and owned by) the G4PhysicalVolumeStore; reclaimed
+        // by the G4StoreCleanup below, never deleted directly.
+        auto* worldPV = new G4PVPlacement(nullptr, G4ThreeVector(), &worldLV, worldLV.GetName(),
+                                          nullptr, false, 0);
+        trackingGeometry = build_tracking_geometry(worldPV);
+    });
+}
+
 // Mirrors aegir's Geant4Sim destructor (geant4_module.cpp, issue #68): empty
 // the geometry stores on the geometry thread before the static store
 // destructors run on the main thread at process exit, where the thread-local
 // G4 data (initialised only on the geometry thread) was never set up —
 // deleting the still-registered volumes there segfaults
 // (~G4PVPlacement -> GetRotation -> null per-thread base).
-struct G4GeometryCleanup {
-    ~G4GeometryCleanup() {
-        SHiP::geometry_thread().run([] {
-            G4GeometryManager::GetInstance()->OpenGeometry();
-            G4RegionStore::Clean();
-            G4PhysicalVolumeStore::Clean();
-            G4LogicalVolumeStore::Clean();
-            G4SolidStore::Clean();
-        });
-    }
-};
-
-}  // namespace
-
-PHLEX_REGISTER_PROVIDERS(m, config) {
-    auto db_file = config.get<std::string>("db_file");
-
-    // Resolve relative/bare filenames via SHIPGEOMETRY_ROOT, same convention
-    // as aegir's geometry_geomodel_provider.
-    if (!std::filesystem::exists(db_file)) {
-        auto resolved = std::filesystem::path(db_file).filename();
-        if (auto const* root = std::getenv("SHIPGEOMETRY_ROOT"))
-            resolved = std::filesystem::path(root) / "share" / "geometry" / resolved;
-        if (std::filesystem::exists(resolved))
-            db_file = resolved.string();
-        else
-            throw std::runtime_error("acts_geometry_provider: cannot locate geometry DB '" +
-                                     db_file +
-                                     "'; set SHIPGEOMETRY_ROOT or provide an absolute path");
-    }
-
-    std::shared_ptr<SHiP::trout::DetectorGeometry> detector;
-    SHiP::geometry_thread().run([&] {
-        auto const service = SHiP::GeometryService::sharedFromFile(db_file);
-        // Throws if the GeoModel->G4 conversion fails.
-        auto& worldLV = service->geant4WorldLogical();
-        // Registered in (and owned by) the G4PhysicalVolumeStore; reclaimed
-        // by the G4GeometryCleanup teardown above, never deleted directly.
-        auto* worldPV = new G4PVPlacement(nullptr, G4ThreeVector(), &worldLV, worldLV.GetName(),
-                                          nullptr, false, 0);
-
-        detector = std::make_shared<SHiP::trout::DetectorGeometry>();
-        detector->geometryService = service;
-        detector->trackingGeometry = build_tracking_geometry(worldPV);
+DetectorGeometry::G4StoreCleanup::~G4StoreCleanup() {
+    SHiP::geometry_thread().run([] {
+        G4GeometryManager::GetInstance()->OpenGeometry();
+        G4RegionStore::Clean();
+        G4PhysicalVolumeStore::Clean();
+        G4LogicalVolumeStore::Clean();
+        G4SolidStore::Clean();
     });
+}
 
-    auto cleanup = std::make_shared<G4GeometryCleanup>();
+}  // namespace SHiP::trout
 
-    m.provide(
-         "read_tracking_geometry",
-         [detector, cleanup](phlex::data_cell_index const&)
-             -> std::shared_ptr<SHiP::trout::DetectorGeometry> { return detector; },
-         phlex::concurrency::unlimited)
-        .output_product("tracking_geometry", phlex::experimental::identifier{"detector"},
-                        phlex::experimental::identifier{"job"});
+PHLEX_REGISTER_RESOURCES(r, config) {
+    r.add_unlimited_resource<SHiP::trout::DetectorGeometry>(config.get<std::string>("db_file"));
 }
