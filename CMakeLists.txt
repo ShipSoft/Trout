@@ -56,6 +56,7 @@ target_link_libraries(
     PRIVATE
         phlex::module
         SHiP::DataModel
+        ROOT::Core
         ROOT::RIO
         ROOT::ROOTNTuple
         spdlog::spdlog
