@@ -87,7 +87,6 @@ class TimeWindowing {
    private:
     double edge(std::size_t i) const { return t0_ + static_cast<double>(i) * step_; }
 
-
     double t0_;
     double step_;
     std::size_t n_;

@@ -286,16 +286,18 @@ PHLEX_REGISTER_PROVIDERS(m, config) {
     // span, so the driver can leave it out and still agree.
     auto const ntuples = SHiP::trout::digitised_ntuples(isSim, simParticles);
     auto const [scans, all, windowing] = SHiP::trout::scan_input(input_file, ntuples, step_ns);
-    spdlog::info("read_digitised_hits: detector hits span [{}, {}] ns, giving {} windows owning "
-                 "{} ns each",
-                 all.min, all.max, windowing.size(), step_ns);
+    spdlog::info(
+        "read_digitised_hits: detector hits span [{}, {}] ns, giving {} windows owning "
+        "{} ns each",
+        all.min, all.max, windowing.size(), step_ns);
 
     std::map<std::string, TimePadding> padding;
     for (auto const& ntuple : ntuples) {
         padding[ntuple.name] = ntuple.padding;
-        spdlog::info("read_digitised_hits: {} is padded by {} ns before and {} ns after the "
-                     "owned slice",
-                     ntuple.name, ntuple.padding.before_ns, ntuple.padding.after_ns);
+        spdlog::info(
+            "read_digitised_hits: {} is padded by {} ns before and {} ns after the "
+            "owned slice",
+            ntuple.name, ntuple.padding.before_ns, ntuple.padding.after_ns);
     }
 
     std::map<std::string, bool> indexed;
@@ -322,10 +324,9 @@ PHLEX_REGISTER_PROVIDERS(m, config) {
     provide_hit_type<SHiP::UBTHit>(m, reading, "ubt_hits", layer);
     provide_hit_type<SHiP::SBTHit>(m, reading, "sbt_hits", layer);
     provide_hit_type<SHiP::StrawTubesHit>(m, reading, "straw_tubes_hits", layer);
-    provide_stream(m,
-                   reading.stream<std::uint64_t>("straw_tubes_hits",
-                                                 time_field<SHiP::StrawTubesHit>),
-                   "straw_tubes_hit_ids", layer);
+    provide_stream(
+        m, reading.stream<std::uint64_t>("straw_tubes_hits", time_field<SHiP::StrawTubesHit>),
+        "straw_tubes_hit_ids", layer);
     provide_hit_type<SHiP::CaloHit>(m, reading, "calorimeter_hits", layer);
     provide_hit_type<SHiP::TimeDetHit>(m, reading, "timing_detector_hits", layer);
     if (isSim)

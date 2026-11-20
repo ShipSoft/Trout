@@ -31,11 +31,10 @@ void register_prepare_measurements(ModuleProxy const& m,
                                    phlex::experimental::identifier const& layer) {
     m.transform(
          "prepare_measurements",
-         [](
-             std::shared_ptr<std::vector<SHiP::StrawTubesHit>> const& ip,
-             std::shared_ptr<std::vector<std::uint64_t>> const& ids, TimeWindow const& window,
-             std::shared_ptr<DetectorGeometry> const& detector,
-             std::shared_ptr<DetectorField> const& field) -> std::shared_ptr<SpillContext> {
+         [](std::shared_ptr<std::vector<SHiP::StrawTubesHit>> const& ip,
+            std::shared_ptr<std::vector<std::uint64_t>> const& ids, TimeWindow const& window,
+            std::shared_ptr<DetectorGeometry> const& detector,
+            std::shared_ptr<DetectorField> const& field) -> std::shared_ptr<SpillContext> {
              auto ctx = std::make_shared<SpillContext>();
              ctx->window = window;
              ctx->seedTimeLo = window.own_lo - kStrawSeedMarginNs;

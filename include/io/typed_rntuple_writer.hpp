@@ -15,6 +15,7 @@
 #include <ROOT/RNTupleModel.hxx>
 #include <ROOT/RNTupleParallelWriter.hxx>
 #include <tuple>
+#include <type_traits>
 
 #include <SHiP/SimHit.hpp>
 #include <SHiP/SimParticle.hpp>
@@ -33,7 +34,6 @@
 #include <stdexcept>
 #include <string>
 #include <string_view>
-#include <type_traits>
 #include <vector>
 
 namespace SHiP::trout {
