@@ -11,10 +11,11 @@ function(params)
     // Process only the first max_spills time windows ("spill" data cells);
     // null processes every window the input spans.
     max_spills: null,
-    // Sliding time windows: width, step between window starts, and how far
-    // out of time order (behind the latest hit read) an input hit may be.
-    window_ns: 3000,
-    step_ns: 1000,
+    // Time windows: the width of the slice each window owns, and how far out
+    // of time order (behind the latest hit read) an input hit may be. How
+    // much context each detector gets around the owned slice is fixed per
+    // detector in C++ (io/DigitisedTimeScan.hpp).
+    step_ns: 2000,
     max_lag_ns: 1000,
     // Path to shannon's digitised-hit output (or a make_test_input file).
     input_file: error 'input_file is required',
@@ -35,13 +36,11 @@ function(params)
     stage: 'reconstruction',
     driver: {
       // One "spill" data cell per time window of the input, counted from the
-      // file itself. Must see the same settings as rntuple_source below.
+      // file itself. Must see the same input_file and step_ns as
+      // rntuple_source below.
       cpp: 'time_window_driver',
       input_file: p.input_file,
       layer: 'spill',
-      simulation: p.simulation,
-      sim_particles: p.sim_particles,
-      window_ns: p.window_ns,
       step_ns: p.step_ns,
     } + (if p.max_spills != null then { max_spills: p.max_spills } else {}),
 
@@ -52,7 +51,6 @@ function(params)
         layer: 'spill',
         simulation: p.simulation,
         sim_particles: p.sim_particles,
-        window_ns: p.window_ns,
         step_ns: p.step_ns,
         max_lag_ns: p.max_lag_ns,
       },

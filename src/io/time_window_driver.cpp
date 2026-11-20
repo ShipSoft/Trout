@@ -4,13 +4,13 @@
 
 // time_window_driver.cpp — Phlex driver plugin
 //
-// Emits one "spill"-layer data cell per sliding time window of a digitised-hit
-// file, so the number of windows comes from the input rather than from a
-// hand-set total. It runs the same first pass over the time columns as
+// Emits one "spill"-layer data cell per time window of a digitised-hit file,
+// so the number of windows comes from the input rather than from a hand-set
+// total. It runs the same first pass over the time columns as
 // read_digitised_hits (io/DigitisedTimeScan.hpp) and must be given the same
-// input_file, window_ns, step_ns, simulation and sim_particles, which
-// workflows/lib/reconstruction.libsonnet passes to both from one set of
-// parameters.
+// input_file and step_ns, which workflows/lib/reconstruction.libsonnet passes
+// to both from one set of parameters. Only detector hits set the windows'
+// span, so the truth RNTuples aren't scanned here at all.
 //
 // TODO: the time columns are scanned twice at startup, once here and once in
 // read_digitised_hits. Phlex drivers can take source objects as arguments
@@ -37,16 +37,14 @@
 PHLEX_REGISTER_DRIVER(d, config) {
     auto const input_file = config.get<std::string>("input_file");
     auto const layer = config.get<std::string>("layer", std::string{"spill"});
-    // Same defaults as read_digitised_hits.
-    auto const simulation = config.get<bool>("simulation", false);
-    auto const sim_particles = simulation && config.get<bool>("sim_particles", false);
-    auto const window_ns = config.get<double>("window_ns", 3000.0);
-    auto const step_ns = config.get<double>("step_ns", 1000.0);
+    // Same default as read_digitised_hits.
+    auto const step_ns = config.get<double>("step_ns", 2000.0);
 
-    auto const scan = SHiP::trout::scan_input(
-        input_file, SHiP::trout::digitised_ntuples(simulation, sim_particles), window_ns, step_ns);
+    // Detector hits only: truth doesn't set the span (see DigitisedTimeScan.hpp).
+    auto const scan =
+        SHiP::trout::scan_input(input_file, SHiP::trout::digitised_ntuples(false, false), step_ns);
     std::size_t n_windows = scan.windowing.size();
-    spdlog::info("time_window_driver: hits span [{}, {}] ns, giving {} '{}' data cells",
+    spdlog::info("time_window_driver: detector hits span [{}, {}] ns, giving {} '{}' data cells",
                  scan.all.min, scan.all.max, n_windows, layer);
 
     // Optional cap, to process just the first part of the input.
