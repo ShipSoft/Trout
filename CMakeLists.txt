@@ -44,6 +44,7 @@ add_library(
     MODULE
     src/io/read_digitised_hits.cpp
     include/io/DigitisedTimeScan.hpp
+    include/io/StrawTiming.hpp
     include/io/TimeWindow.hpp
 )
 target_include_directories(
@@ -67,6 +68,7 @@ add_library(
     MODULE
     src/io/time_window_driver.cpp
     include/io/DigitisedTimeScan.hpp
+    include/io/StrawTiming.hpp
     include/io/TimeWindow.hpp
 )
 target_include_directories(
@@ -138,6 +140,7 @@ add_library(
     src/detectors/spectrometer/resolve_tracks.cpp
     include/detectors/spectrometer/resolve_tracks.hpp
     include/detectors/spectrometer/TrackCandidate.hpp
+    include/io/StrawTiming.hpp
     include/io/TimeWindow.hpp
     include/PhlexModuleProxy.hpp
     include/detectors/spectrometer/SpillContext.hpp

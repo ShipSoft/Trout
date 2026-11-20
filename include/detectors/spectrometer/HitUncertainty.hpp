@@ -9,6 +9,8 @@
 
 #pragma once
 
+#include "io/StrawTiming.hpp"
+
 #include <Acts/Definitions/Algebra.hpp>
 #include <Acts/Definitions/Units.hpp>
 
@@ -44,6 +46,7 @@ Acts::SquareMatrix2 hitCovariance(HitUncertaintyContext const& context);
 // This is the time window for the track making. Is a reflection of the time resolution of the
 // straw tubes so goes here. This is the size of the cut for making the seeds and then the
 // subsequent tracks.
-inline constexpr double strawHitTimeSelection = 2000. * Acts::UnitConstants::ns;
+// Defined in ns in io/StrawTiming.hpp, shared with the time window reader.
+inline constexpr double strawHitTimeSelection = kStrawHitTimeSelectionNs * Acts::UnitConstants::ns;
 
 }  // namespace SHiP::trout

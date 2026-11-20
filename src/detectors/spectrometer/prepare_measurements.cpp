@@ -8,7 +8,7 @@
 #include "acts_geometry_provider.hpp"
 #include "detectors/spectrometer/HitUncertainty.hpp"
 #include "detectors/spectrometer/SpillContext.hpp"
-#include "io/DigitisedTimeScan.hpp"
+#include "io/StrawTiming.hpp"
 
 #include <Acts/Geometry/GeometryContext.hpp>
 
@@ -20,25 +20,26 @@
 
 namespace SHiP::trout {
 
-// A track owned at the end of a window's slice must still find all its hits in
-// the straw tubes' padded range (see io/TimeWindow.hpp).
-static_assert(kStrawTubesPadding.after_ns * Acts::UnitConstants::ns >= strawHitTimeSelection,
-              "straw-tube time padding is smaller than the straw hit time selection");
+// A track seeded anywhere in the seed range (owned slice +- the seed margin)
+// can use hits up to the hit time selection beyond its seed, on either side,
+// so the straw tubes' padded range must cover all of them.
+static_assert(kStrawTubesPadding.before_ns >= kStrawSeedMarginNs + kStrawHitTimeSelectionNs &&
+                  kStrawTubesPadding.after_ns >= kStrawSeedMarginNs + kStrawHitTimeSelectionNs,
+              "straw-tube time padding doesn't cover every hit a margin-seeded track can use");
 
 void register_prepare_measurements(ModuleProxy const& m,
-                                   phlex::experimental::identifier const& layer,
-                                   double seedMarginNs) {
+                                   phlex::experimental::identifier const& layer) {
     m.transform(
          "prepare_measurements",
-         [seedMarginNs](
+         [](
              std::shared_ptr<std::vector<SHiP::StrawTubesHit>> const& ip,
              std::shared_ptr<std::vector<std::uint64_t>> const& ids, TimeWindow const& window,
              std::shared_ptr<DetectorGeometry> const& detector,
              std::shared_ptr<DetectorField> const& field) -> std::shared_ptr<SpillContext> {
              auto ctx = std::make_shared<SpillContext>();
              ctx->window = window;
-             ctx->seedTimeLo = window.own_lo - seedMarginNs;
-             ctx->seedTimeHi = window.own_hi + seedMarginNs;
+             ctx->seedTimeLo = window.own_lo - kStrawSeedMarginNs;
+             ctx->seedTimeHi = window.own_hi + kStrawSeedMarginNs;
 
              if (!ip || !ids || !detector || !detector->trackingGeometry || !field || !field->field)
                  return ctx;
