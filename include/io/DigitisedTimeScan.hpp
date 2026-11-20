@@ -14,6 +14,7 @@
 
 #pragma once
 
+#include "io/StrawTiming.hpp"
 #include "io/TimeWindow.hpp"
 
 #include <ROOT/RNTupleReader.hxx>
@@ -67,12 +68,9 @@ inline TimeScan scan_times(std::string const& input_file, std::string const& ntu
 }
 
 // Time context each detector's reconstruction needs around a window's owned
-// slice. The straw tubes need the most: tracking groups hits up to
-// strawHitTimeSelection (2000 ns, detectors/spectrometer/HitUncertainty.hpp)
-// apart, so a track owned at the end of the slice must still find its hits.
-// The other detectors have no reconstruction that looks beyond the owned
-// slice yet, so they get exactly the owned slice.
-inline constexpr TimePadding kStrawTubesPadding{.before_ns = 2000.0, .after_ns = 2000.0};
+// slice. The straw tubes need the most, for tracking (kStrawTubesPadding,
+// io/StrawTiming.hpp). The other detectors have no reconstruction that looks
+// beyond the owned slice yet, so they get exactly the owned slice.
 inline constexpr TimePadding kNoPadding{};
 
 // One RNTuple read from the input.

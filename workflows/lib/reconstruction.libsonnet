@@ -17,6 +17,8 @@ function(params)
     // detector in C++ (io/DigitisedTimeScan.hpp).
     step_ns: 2000,
     max_lag_ns: 1000,
+    // Tracks sharing more hits than this are duplicates; the best is kept.
+    max_shared_hits: 1,
     // Path to shannon's digitised-hit output (or a make_test_input file).
     input_file: error 'input_file is required',
     db_file: '../geometry/my_ship_geometry.db',
@@ -65,6 +67,7 @@ function(params)
       spectrometer_tracking: {
         cpp: 'spectrometer_tracking',
         layer: 'spill',
+        max_shared_hits: p.max_shared_hits,
       },
       rec_output: {
         cpp: 'rec_output_module',
