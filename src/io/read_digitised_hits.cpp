@@ -44,6 +44,7 @@
 
 #include <ROOT/RNTupleReader.hxx>
 #include <ROOT/RNTupleView.hxx>
+#include <TROOT.h>
 #include <tuple>
 #include <type_traits>
 
@@ -260,6 +261,13 @@ void provide_hit_type(Registrar& m, WindowedReading const& reading, std::string 
 }  // namespace
 
 PHLEX_REGISTER_PROVIDERS(m, config) {
+    // Each collection's provider is serial, but phlex runs different
+    // providers at the same time, so several RNTuple readers deserialise
+    // dictionary-backed SHiP types on different threads at once. That needs
+    // ROOT's global state (TClass, streamer info) locked. Idempotent, and must
+    // happen before any reader is opened.
+    ROOT::EnableThreadSafety();
+
     auto const input_file = config.get<std::string>("input_file");
     auto const layer = phlex::experimental::identifier{config.get<std::string>("layer")};
     auto const isSim = config.get<bool>("simulation", false);
