@@ -33,6 +33,7 @@
 #include <stdexcept>
 #include <string>
 #include <string_view>
+#include <type_traits>
 #include <vector>
 
 namespace SHiP::trout {
@@ -127,9 +128,8 @@ class TypedHitWriter {
 
 // Generic bundle of TypedHitWriter<Hit>, one per NamedHit<Name, Hit> in
 // NamedHits. Instantiate this once per group of hit types that should share
-// one RNTupleFileService/output file (see ReconstructedWriters and
-// SimTruthWriters below for two independent bundles) instead of writing
-// bespoke tuple/constructor boilerplate per group.
+// one RNTupleFileService/output file (see ReconstructedWriters below)
+// instead of writing bespoke tuple/constructor boilerplate per group.
 template <typename... NamedHits>
 class TypedHitWriters {
    public:
@@ -150,16 +150,16 @@ using ReconstructedWriters = TypedHitWriters<
     NamedHit<"upstream_tagger", SHiP::UBTHit>, NamedHit<"surround_tagger", SHiP::SBTHit>,
     NamedHit<"calorimeter", SHiP::CaloHit>, NamedHit<"timing_detector", SHiP::TimeDetHit>>;
 
-using SimTruthWriters = TypedHitWriters<NamedHit<"sim_hits", SHiP::SimHit>,
-                                        NamedHit<"sim_particles", SHiP::SimParticle>>;
-
 class HitRNTupleWriter {
    public:
-    explicit HitRNTupleWriter(std::string const& filename, bool isSim)
+    // Each truth RNTuple is only created when that truth is read, so an
+    // output without it has no RNTuple at all rather than an empty one.
+    HitRNTupleWriter(std::string const& filename, bool isSim, bool simParticles)
         : file_service_{filename}, writers_{file_service_} {
-        if (isSim) {
-            sim_writers_.emplace(file_service_);
-        }
+        if (isSim)
+            sim_hits_.emplace(file_service_, "sim_hits");
+        if (isSim && simParticles)
+            sim_particles_.emplace(file_service_, "sim_particles");
     }
 
     // Bind a specific Hit instantiation at each phlex registration site,
@@ -171,18 +171,26 @@ class HitRNTupleWriter {
         write_all(hits, writers_.template get<Hit>());
     }
 
-    // Kept separate: sim_writers_ is only conditionally constructed (when
-    // isSim), so it can't live in the always-present writers_ bundle. Only
-    // ever registered when isSim is true (see PHLEX_REGISTER_ALGORITHMS in
-    // rec_output_module.cpp), so sim_writers_ is guaranteed to hold a value
-    // whenever this is actually called.
+    // Kept separate: the truth writers are only conditionally constructed,
+    // so they can't live in the always-present writers_ bundle. Each
+    // write_sim<Hit> is only registered when its writer exists (see
+    // register_rec_output in rec_output_module.cpp), so sim_writer<Hit>()
+    // is guaranteed to hold a value whenever this is actually called.
     template <typename Hit>
     void write_sim(std::shared_ptr<std::vector<Hit>> const& hits) {
         if (hits)
-            write_all(*hits, sim_writers_->template get<Hit>());
+            write_all(*hits, sim_writer<Hit>());
     }
 
    private:
+    template <typename Hit>
+    TypedHitWriter<Hit>& sim_writer() {
+        if constexpr (std::is_same_v<Hit, SHiP::SimHit>)
+            return *sim_hits_;
+        else
+            return *sim_particles_;
+    }
+
     template <typename Hit>
     static void write_all(std::vector<Hit> const& hits, TypedHitWriter<Hit>& writer) {
         for (auto const& hit : hits) {
@@ -195,8 +203,9 @@ class HitRNTupleWriter {
 
     ReconstructedWriters writers_;
 
-    // Left unconstructed (no RNTuples created at all) unless isSim
-    std::optional<SimTruthWriters> sim_writers_;
+    // Left unconstructed (no RNTuple created) unless that truth is read.
+    std::optional<TypedHitWriter<SHiP::SimHit>> sim_hits_;
+    std::optional<TypedHitWriter<SHiP::SimParticle>> sim_particles_;
 };
 
 }  // namespace SHiP::trout
