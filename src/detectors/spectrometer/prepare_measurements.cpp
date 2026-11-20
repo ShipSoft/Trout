@@ -6,19 +6,24 @@
 
 #include "acts_field_provider.hpp"
 #include "acts_geometry_provider.hpp"
+#include "detectors/spectrometer/HitUncertainty.hpp"
 #include "detectors/spectrometer/SpillContext.hpp"
+#include "io/DigitisedTimeScan.hpp"
 
 #include <Acts/Geometry/GeometryContext.hpp>
 
 #include <SHiP/RecHit.hpp>
 #include <SHiP/detectors/StrawTubesHit.hpp>
-#include <cmath>
 #include <cstdint>
 #include <memory>
-#include <stdexcept>
 #include <vector>
 
 namespace SHiP::trout {
+
+// A track owned at the end of a window's slice must still find all its hits in
+// the straw tubes' padded range (see io/TimeWindow.hpp).
+static_assert(kStrawTubesPadding.after_ns * Acts::UnitConstants::ns >= strawHitTimeSelection,
+              "straw-tube time padding is smaller than the straw hit time selection");
 
 void register_prepare_measurements(ModuleProxy const& m,
                                    phlex::experimental::identifier const& layer,
@@ -34,12 +39,6 @@ void register_prepare_measurements(ModuleProxy const& m,
              ctx->window = window;
              ctx->seedTimeLo = window.own_lo - seedMarginNs;
              ctx->seedTimeHi = window.own_hi + seedMarginNs;
-
-             // A track owned near the end of the slice must still fit inside the window.
-             if (std::isfinite(window.own_hi) &&
-                 (window.hi - window.own_hi) * Acts::UnitConstants::ns < strawHitTimeSelection)
-                 throw std::invalid_argument(
-                     "window margin is smaller than the straw hit time selection");
 
              if (!ip || !ids || !detector || !detector->trackingGeometry || !field || !field->field)
                  return ctx;

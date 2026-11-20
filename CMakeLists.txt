@@ -23,7 +23,7 @@ set(CMAKE_MODULE_LINKER_FLAGS "${CMAKE_MODULE_LINKER_FLAGS} -Wl,--no-as-needed")
 find_package(SHiPGeometry CONFIG REQUIRED)
 find_package(SHiPGeometryService 0.6 CONFIG REQUIRED)
 find_package(SHiPDataModel 0.6 REQUIRED)
-find_package(SHiPFieldService 0.4 REQUIRED COMPONENTS MapIO ActsAdapter)
+find_package(SHiPFieldService 0.5 REQUIRED COMPONENTS MapIO ActsAdapter)
 find_package(Acts 48 CONFIG REQUIRED)
 
 find_package(Boost REQUIRED COMPONENTS json)

@@ -7,7 +7,7 @@
 // Reads shannon's digitised-hit output (one RNTuple per detector type, each
 // a flat record-per-hit stream — SHiP has no discrete "event", just a
 // continuous hit stream, so there's no on-disk event boundary) and cuts it
-// into sliding time windows (see io/TimeWindow.hpp), one per "spill"-layer
+// into time windows (see io/TimeWindow.hpp), one per "spill"-layer
 // data cell. Each detector's hit collection for a window is its own typed
 // product, plus a pass-through copy of the raw SimHits (and, with
 // sim_particles: true, SimParticles).
@@ -20,17 +20,19 @@
 //
 //   - streamed, if no entry is more than max_lag_ns earlier than an entry
 //     before it: read forward once into a buffer holding only the hits of
-//     windows not yet served. Memory is about one window. This suits large
-//     runs, whose hits shannon writes roughly in time order.
+//     windows not yet served. Memory is about one owned slice plus that
+//     detector's padding. This suits large runs, whose hits shannon writes
+//     roughly in time order.
 //   - indexed, otherwise: keep a time-sorted (time, entry) index, about 16
 //     bytes per hit, and read each window's entries directly. This suits
 //     small runs, where every event starts at nearly the same time and file
 //     order says little about hit time.
 //
-// Only the straw-tube hits (and their ids) are given for the whole window,
-// since tracking needs the hits around what it owns as context. Every other
-// collection is cut to the window's owned slice, so each hit is read and
-// written out exactly once even though the windows overlap.
+// Each collection is given for the window's owned slice widened by that
+// detector's time padding (DigitisedTimeScan.hpp). Only the straw-tube hits
+// (and their ids) are padded today, since tracking needs the hits around what
+// it owns as context. Every other collection gets exactly the owned slice, so
+// each of those hits is read and written out exactly once.
 
 #include "io/DigitisedTimeScan.hpp"
 #include "io/TimeWindow.hpp"
@@ -69,11 +71,9 @@
 namespace {
 
 using SHiP::trout::time_field;
+using SHiP::trout::TimePadding;
 using SHiP::trout::TimeWindow;
 using SHiP::trout::TimeWindowing;
-
-// Which part of a window a stream hands out.
-enum class Slice { window, owned };
 
 // Hands out the entries of one RNTuple a window at a time, streamed or
 // indexed (see the top of this file). T is either the hit type itself or
@@ -86,14 +86,15 @@ class WindowedStream {
 
    public:
     WindowedStream(std::string const& input_file, std::string const& ntuple_name, char const* time,
-                   TimeWindowing const& windowing, double max_lag, Slice slice, bool indexed)
+                   TimeWindowing const& windowing, double max_lag, TimePadding padding,
+                   bool indexed)
         : name_{ntuple_name},
           reader_{ROOT::RNTupleReader::Open(ntuple_name, input_file)},
           time_view_{reader_->GetView<double>(time)},
           n_entries_{reader_->GetNEntries()},
           windowing_{windowing},
           max_lag_{max_lag},
-          slice_{slice},
+          padding_{padding},
           indexed_{indexed},
           served_(windowing.size(), false) {
         if constexpr (!kEntryIds)
@@ -112,13 +113,10 @@ class WindowedStream {
         if (i >= windowing_.size())
             throw std::out_of_range(std::format(
                 "read_digitised_hits: window {} requested but the input only spans {} windows; "
-                "the driver must be time_window_driver with the same input_file, window_ns, "
-                "step_ns, simulation and sim_particles",
+                "the driver must be time_window_driver with the same input_file and step_ns",
                 i, windowing_.size()));
-        auto const w = windowing_.at(i);
-        double const lo = slice_ == Slice::window ? w.lo : w.own_lo;
-        double const hi = slice_ == Slice::window ? w.hi : w.own_hi;
-        return indexed_ ? from_index(lo, hi) : from_stream(i, lo, hi);
+        auto const range = windowing_.at(i).padded(padding_);
+        return indexed_ ? from_index(range.lo, range.hi) : from_stream(i, range.lo, range.hi);
     }
 
    private:
@@ -171,10 +169,11 @@ class WindowedStream {
         if (first_unserved_ == served_.size()) {
             buffer_.clear();
         } else {
-            // Nothing earlier than the first window still to be served is
-            // needed again. The buffer is in file order, which is only
-            // roughly time order, so this can't just pop from the front.
-            double const cutoff = windowing_.at(first_unserved_).lo;
+            // Nothing earlier than the padded range of the first window still
+            // to be served is needed again. The buffer is in file order,
+            // which is only roughly time order, so this can't just pop from
+            // the front.
+            double const cutoff = windowing_.at(first_unserved_).padded(padding_).lo;
             std::erase_if(buffer_, [cutoff](Entry const& e) { return e.time < cutoff; });
         }
         return out;
@@ -206,7 +205,7 @@ class WindowedStream {
 
     TimeWindowing windowing_;
     double max_lag_;
-    Slice slice_;
+    TimePadding padding_;
     bool indexed_;
 
     // Indexed mode.
@@ -234,25 +233,28 @@ void provide_stream(Registrar& m, std::shared_ptr<WindowedStream<T>> stream,
 }
 
 // What every WindowedStream of one input shares, so each collection's stream
-// can be made with just its name, time field and slice.
+// can be made with just its RNTuple name and time field; its padding comes
+// from DigitisedTimeScan.hpp.
 struct WindowedReading {
     std::string input_file;
     TimeWindowing windowing;
     double max_lag;
     std::map<std::string, bool> indexed;
+    std::map<std::string, TimePadding> padding;
 
     template <typename T>
-    std::shared_ptr<WindowedStream<T>> stream(std::string const& ntuple_name, char const* field,
-                                              Slice slice) const {
+    std::shared_ptr<WindowedStream<T>> stream(std::string const& ntuple_name,
+                                              char const* field) const {
         return std::make_shared<WindowedStream<T>>(input_file, ntuple_name, field, windowing,
-                                                   max_lag, slice, indexed.at(ntuple_name));
+                                                   max_lag, padding.at(ntuple_name),
+                                                   indexed.at(ntuple_name));
     }
 };
 
 template <typename Hit, typename Registrar>
 void provide_hit_type(Registrar& m, WindowedReading const& reading, std::string const& ntuple_name,
-                      Slice slice, phlex::experimental::identifier const& layer) {
-    provide_stream(m, reading.stream<Hit>(ntuple_name, time_field<Hit>, slice), ntuple_name, layer);
+                      phlex::experimental::identifier const& layer) {
+    provide_stream(m, reading.stream<Hit>(ntuple_name, time_field<Hit>), ntuple_name, layer);
 }
 
 }  // namespace
@@ -265,7 +267,6 @@ PHLEX_REGISTER_PROVIDERS(m, config) {
     // of magnitude more entries than all the hits together, and nothing in
     // reconstruction uses them.
     auto const simParticles = isSim && config.get<bool>("sim_particles", false);
-    auto const window_ns = config.get<double>("window_ns", 6500.0);
     auto const step_ns = config.get<double>("step_ns", 2000.0);
     auto const max_lag_ns = config.get<double>("max_lag_ns", 1000.0);
     if (!(max_lag_ns >= 0.0))
@@ -273,11 +274,21 @@ PHLEX_REGISTER_PROVIDERS(m, config) {
 
     // time_window_driver runs the same scan with the same settings to decide
     // how many "spill" data cells to emit, so the two agree on the windows.
-    auto const [scans, all, windowing] = SHiP::trout::scan_input(
-        input_file, SHiP::trout::digitised_ntuples(isSim, simParticles), window_ns, step_ns);
-    spdlog::info(
-        "read_digitised_hits: hits span [{}, {}] ns, giving {} windows of {} ns every {} ns",
-        all.min, all.max, windowing.size(), window_ns, step_ns);
+    // Truth is scanned too (for its max_lag), but only detector hits set the
+    // span, so the driver can leave it out and still agree.
+    auto const ntuples = SHiP::trout::digitised_ntuples(isSim, simParticles);
+    auto const [scans, all, windowing] = SHiP::trout::scan_input(input_file, ntuples, step_ns);
+    spdlog::info("read_digitised_hits: detector hits span [{}, {}] ns, giving {} windows owning "
+                 "{} ns each",
+                 all.min, all.max, windowing.size(), step_ns);
+
+    std::map<std::string, TimePadding> padding;
+    for (auto const& ntuple : ntuples) {
+        padding[ntuple.name] = ntuple.padding;
+        spdlog::info("read_digitised_hits: {} is padded by {} ns before and {} ns after the "
+                     "owned slice",
+                     ntuple.name, ntuple.padding.before_ns, ntuple.padding.after_ns);
+    }
 
     std::map<std::string, bool> indexed;
     for (auto const& [name, scan] : scans) {
@@ -299,19 +310,18 @@ PHLEX_REGISTER_PROVIDERS(m, config) {
          phlex::concurrency::unlimited)
         .output_product("rntuple_source", "window", layer);
 
-    using enum Slice;
-    WindowedReading const reading{input_file, windowing, max_lag_ns, indexed};
-    provide_hit_type<SHiP::UBTHit>(m, reading, "ubt_hits", owned, layer);
-    provide_hit_type<SHiP::SBTHit>(m, reading, "sbt_hits", owned, layer);
-    provide_hit_type<SHiP::StrawTubesHit>(m, reading, "straw_tubes_hits", window, layer);
-    provide_stream(
-        m,
-        reading.stream<std::uint64_t>("straw_tubes_hits", time_field<SHiP::StrawTubesHit>, window),
-        "straw_tubes_hit_ids", layer);
-    provide_hit_type<SHiP::CaloHit>(m, reading, "calorimeter_hits", owned, layer);
-    provide_hit_type<SHiP::TimeDetHit>(m, reading, "timing_detector_hits", owned, layer);
+    WindowedReading const reading{input_file, windowing, max_lag_ns, indexed, padding};
+    provide_hit_type<SHiP::UBTHit>(m, reading, "ubt_hits", layer);
+    provide_hit_type<SHiP::SBTHit>(m, reading, "sbt_hits", layer);
+    provide_hit_type<SHiP::StrawTubesHit>(m, reading, "straw_tubes_hits", layer);
+    provide_stream(m,
+                   reading.stream<std::uint64_t>("straw_tubes_hits",
+                                                 time_field<SHiP::StrawTubesHit>),
+                   "straw_tubes_hit_ids", layer);
+    provide_hit_type<SHiP::CaloHit>(m, reading, "calorimeter_hits", layer);
+    provide_hit_type<SHiP::TimeDetHit>(m, reading, "timing_detector_hits", layer);
     if (isSim)
-        provide_hit_type<SHiP::SimHit>(m, reading, "sim_hits", owned, layer);
+        provide_hit_type<SHiP::SimHit>(m, reading, "sim_hits", layer);
     if (simParticles)
-        provide_hit_type<SHiP::SimParticle>(m, reading, "sim_particles", owned, layer);
+        provide_hit_type<SHiP::SimParticle>(m, reading, "sim_particles", layer);
 }

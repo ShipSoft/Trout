@@ -127,9 +127,9 @@ class SeedGenObject {
         }
         auto const& w = ctx_->window;
         spdlog::info(
-            "generate_seeds: window {} [{}, {}) ns: {} measurements, {} station-1 hits in seed "
+            "generate_seeds: window {} owning [{}, {}) ns: {} measurements, {} station-1 hits in seed "
             "range, {} station-2 hits, {} time-coincident pairs (upper bound on seeds)",
-            w.index, w.lo, w.hi, meas.size(), hits1_.size(), hits2_.size(), pairs);
+            w.index, w.own_lo, w.own_hi, meas.size(), hits1_.size(), hits2_.size(), pairs);
     }
 
     std::shared_ptr<SpillContext> ctx_;

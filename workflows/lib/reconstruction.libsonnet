@@ -11,9 +11,10 @@ function(params)
     // Process only the first max_spills time windows ("spill" data cells);
     // null processes every window the input spans.
     max_spills: null,
-    // Sliding time windows: width, step between window starts, and how far
-    // out of time order (behind the latest hit read) an input hit may be.
-    window_ns: 6500,
+    // Time windows: the width of the slice each window owns, and how far out
+    // of time order (behind the latest hit read) an input hit may be. How
+    // much context each detector gets around the owned slice is fixed per
+    // detector in C++ (io/DigitisedTimeScan.hpp).
     step_ns: 2000,
     max_lag_ns: 1000,
     // Station-1 hits up to this far outside a window's owned slice are still
@@ -24,15 +25,13 @@ function(params)
     // Path to shannon's digitised-hit output (or a make_test_input file).
     input_file: error 'input_file is required',
     db_file: '../geometry/my_ship_geometry.db',
-    // Spectrometer field map in the SHiP field-map format: the `file`, the
-    // `map` inside it, and an optional `translation` [x, y, z] in mm placing
-    // the map's origin in the global frame. The default puts it at the
-    // magnet centre, as FairShip and aegir do.
-    field: {
-      file: 'spectrometer_dipole.root',
-      map: 'spectrometer_dipole',
-      translation: [0, 0, 89570],
-    },
+    // Spectrometer field map in the SHiP field-map format. By default the
+    // map and its placement come from the placements.json that
+    // ship-field-maps installs under $SHIPFIELD_ROOT/share/field/ (`magnet`
+    // picks the entry, 'Spectrometer' if omitted). Alternatively give the
+    // `file`, the `map` inside it, and an optional `translation` [x, y, z] in
+    // mm placing the map's origin in the global frame.
+    field: { placements: 'placements.json', magnet: 'Spectrometer' },
     rntuple_file: error 'rntuple_file is required',
     histo_file: null,
     // Include the per-subdetector placeholder reconstruction modules.
@@ -42,13 +41,11 @@ function(params)
     stage: 'reconstruction',
     driver: {
       // One "spill" data cell per time window of the input, counted from the
-      // file itself. Must see the same settings as rntuple_source below.
+      // file itself. Must see the same input_file and step_ns as
+      // rntuple_source below.
       cpp: 'time_window_driver',
       input_file: p.input_file,
       layer: 'spill',
-      simulation: p.simulation,
-      sim_particles: p.sim_particles,
-      window_ns: p.window_ns,
       step_ns: p.step_ns,
     } + (if p.max_spills != null then { max_spills: p.max_spills } else {}),
 
@@ -59,7 +56,6 @@ function(params)
         layer: 'spill',
         simulation: p.simulation,
         sim_particles: p.sim_particles,
-        window_ns: p.window_ns,
         step_ns: p.step_ns,
         max_lag_ns: p.max_lag_ns,
       },
