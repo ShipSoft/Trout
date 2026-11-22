@@ -106,9 +106,9 @@ int main(int argc, char* argv[]) {
                         sim_hit.detector_id = static_cast<std::int32_t>(detector);
                         sim_hit.track_id = track;
                         sim_hit.pdg_code = particle.pdg_code;
-                        sim_hit.position = {x_ref + slope_x * (z - z_ref) + rng.gaussian(0.0, 1.0),
-                                            y_ref + slope_y * (z - z_ref) + rng.gaussian(0.0, 1.0),
-                                            z};
+                        sim_hit.position = {
+                            x_ref + (slope_x * (z - z_ref)) + rng.gaussian(0.0, 1.0),
+                            y_ref + (slope_y * (z - z_ref)) + rng.gaussian(0.0, 1.0), z};
                         sim_hit.momentum = particle.momentum;
                         sim_hit.energy_deposit = rng.uniform(0.0, 0.1);
                         sim_hit.time = track_time + rng.uniform(-1.0, 1.0);

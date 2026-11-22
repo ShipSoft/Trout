@@ -31,7 +31,7 @@ inline TrackFitResult fromActsFitResult(
 
     auto track = actsResult.value();
     const auto& params = track.parameters();
-    auto& states = tracks.trackStateContainer();
+    auto const& states = tracks.trackStateContainer();
 
     result.fit_status = 0;
     result.chi2 = track.chi2();
@@ -63,15 +63,15 @@ inline TrackFitResult fromActsFitResult(
         if (!ts.typeFlags().isMeasurement()) {
             return true;
         }
-        if (!(ts.hasCalibrated())) {
+        if (!ts.hasCalibrated()) {
             return true;
         }
         if (!ts.hasSmoothed()) {
             return true;
         }
 
-        auto meas = ts.template calibrated<2>();
-        auto smooth = ts.smoothed();
+        auto const meas = ts.template calibrated<2>();
+        auto const smooth = ts.smoothed();
 
         Acts::Vector2 fitted;
         fitted << smooth[Acts::eBoundLoc0], smooth[Acts::eBoundLoc1];

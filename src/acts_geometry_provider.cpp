@@ -79,18 +79,20 @@ using PlacementMap = std::map<std::string, std::optional<StationPlacement>>;
 // composing the placement transform with G4NavigationHistory (Geant4's own
 // transform composition, rather than hand-rolled affine-transform math) so
 // any rotated ancestors above the tracker are handled correctly.
-void find_stations(G4VPhysicalVolume* pv, PlacementMap& targets, std::size_t& remaining,
+void find_stations(G4VPhysicalVolume const* pv, PlacementMap& targets, std::size_t& remaining,
                    G4NavigationHistory& history) {
-    if (auto it = targets.find(pv->GetName()); it != targets.end() && !it->second) {
+    if (auto const it = targets.find(pv->GetName()); it != targets.end() && !it->second) {
         auto const origin = history.GetTopTransform().Inverse().TransformPoint(G4ThreeVector());
-        G4ThreeVector pMin, pMax;
+        G4ThreeVector pMin;
+        G4ThreeVector pMax;
         pv->GetLogicalVolume()->GetSolid()->BoundingLimits(pMin, pMax);
-        it->second =
-            StationPlacement{origin, 0.5 * (pMax.x() - pMin.x()), 0.5 * (pMax.y() - pMin.y())};
+        it->second = StationPlacement{.origin = origin,
+                                      .halfX = 0.5 * (pMax.x() - pMin.x()),
+                                      .halfY = 0.5 * (pMax.y() - pMin.y())};
         --remaining;
         return;  // stations don't nest inside each other
     }
-    auto* lv = pv->GetLogicalVolume();
+    auto const* lv = pv->GetLogicalVolume();
     for (std::size_t i = 0; i < lv->GetNoDaughters() && remaining > 0; ++i) {
         auto* daughter = lv->GetDaughter(i);
         history.NewLevel(daughter, kNormal, daughter->GetCopyNo());
@@ -100,11 +102,14 @@ void find_stations(G4VPhysicalVolume* pv, PlacementMap& targets, std::size_t& re
 }
 
 std::shared_ptr<Acts::TrackingGeometry> build_tracking_geometry(G4VPhysicalVolume* world_pv) {
-    auto station_name = [](int i) { return "/SHiP/trackers/station_" + std::to_string(i + 1); };
+    auto const station_name = [](int i) {
+        return "/SHiP/trackers/station_" + std::to_string(i + 1);
+    };
 
     PlacementMap targets;
-    for (int i = 0; i < kNumStations; ++i)
+    for (int i = 0; i < kNumStations; ++i) {
         targets.emplace(station_name(i), std::nullopt);
+    }
 
     G4NavigationHistory history;
     history.SetFirstEntry(world_pv);
@@ -114,9 +119,10 @@ std::shared_ptr<Acts::TrackingGeometry> build_tracking_geometry(G4VPhysicalVolum
     std::array<StationPlacement, kNumStations> stations;
     for (int i = 0; i < kNumStations; ++i) {
         auto const& found = targets.at(station_name(i));
-        if (!found)
+        if (!found) {
             throw std::runtime_error("acts_geometry_provider: could not find '" + station_name(i) +
                                      "' in geometry");
+        }
         stations[i] = *found;
     }
 
@@ -124,7 +130,8 @@ std::shared_ptr<Acts::TrackingGeometry> build_tracking_geometry(G4VPhysicalVolum
     // computed in G4 mm and converted to ACTS units in one place below.
     double minZ = stations.front().origin.z();
     double maxZ = stations.front().origin.z();
-    double halfX = 0, halfY = 0;
+    double halfX = 0;
+    double halfY = 0;
     for (auto const& s : stations) {
         minZ = std::min(minZ, s.origin.z());
         maxZ = std::max(maxZ, s.origin.z());
@@ -134,10 +141,10 @@ std::shared_ptr<Acts::TrackingGeometry> build_tracking_geometry(G4VPhysicalVolum
     double const margin_mm = 100.;
     double const containerHalfX = (halfX + margin_mm) * Acts::UnitConstants::mm;
     double const containerHalfY = (halfY + margin_mm) * Acts::UnitConstants::mm;
-    double const containerHalfZ = (0.5 * (maxZ - minZ) + margin_mm) * Acts::UnitConstants::mm;
+    double const containerHalfZ = ((0.5 * (maxZ - minZ)) + margin_mm) * Acts::UnitConstants::mm;
     double const containerZ = 0.5 * (maxZ + minZ) * Acts::UnitConstants::mm;
 
-    auto containerBounds =
+    auto const containerBounds =
         std::make_shared<Acts::CuboidVolumeBounds>(containerHalfX, containerHalfY, containerHalfZ);
     Acts::Transform3 containerTrf = Acts::Transform3::Identity();
     containerTrf.translate(Acts::Vector3(0., 0., containerZ));
@@ -152,10 +159,10 @@ std::shared_ptr<Acts::TrackingGeometry> build_tracking_geometry(G4VPhysicalVolum
                                     s.origin.y() * Acts::UnitConstants::mm,
                                     s.origin.z() * Acts::UnitConstants::mm));
 
-        auto bounds = std::make_shared<Acts::RectangleBounds>(s.halfX * Acts::UnitConstants::mm,
-                                                              s.halfY * Acts::UnitConstants::mm);
+        auto const bounds = std::make_shared<Acts::RectangleBounds>(
+            s.halfX * Acts::UnitConstants::mm, s.halfY * Acts::UnitConstants::mm);
 
-        auto surface = Acts::Surface::makeShared<Acts::PlaneSurface>(trf, bounds);
+        auto const surface = Acts::Surface::makeShared<Acts::PlaneSurface>(trf, bounds);
         surface->assignGeometryId(Acts::GeometryIdentifier{}.withVolume(1).withSensitive(i + 1));
         // Independent of the GeometryIdentifier's sensitive() component above:
         // Surface::isSensitive() reads its own m_isSensitive flag (default
@@ -204,8 +211,8 @@ std::shared_ptr<Acts::TrackingGeometry> build_tracking_geometry(G4VPhysicalVolum
                 .asUniquePtr()));
     });
 
-    Acts::BlueprintOptions blueprintOptions;
-    auto gctx = Acts::GeometryContext::dangerouslyDefaultConstruct();
+    Acts::BlueprintOptions const blueprintOptions;
+    auto const gctx = Acts::GeometryContext::dangerouslyDefaultConstruct();
     return root->construct(blueprintOptions, gctx);
 }
 
@@ -236,14 +243,16 @@ PHLEX_REGISTER_PROVIDERS(m, config) {
     // as aegir's geometry_geomodel_provider.
     if (!std::filesystem::exists(db_file)) {
         auto resolved = std::filesystem::path(db_file).filename();
-        if (auto const* root = std::getenv("SHIPGEOMETRY_ROOT"))
+        if (auto const* root = std::getenv("SHIPGEOMETRY_ROOT")) {
             resolved = std::filesystem::path(root) / "share" / "geometry" / resolved;
-        if (std::filesystem::exists(resolved))
+        }
+        if (std::filesystem::exists(resolved)) {
             db_file = resolved.string();
-        else
+        } else {
             throw std::runtime_error("acts_geometry_provider: cannot locate geometry DB '" +
                                      db_file +
                                      "'; set SHIPGEOMETRY_ROOT or provide an absolute path");
+        }
     }
 
     std::shared_ptr<SHiP::trout::DetectorGeometry> detector;
@@ -261,7 +270,7 @@ PHLEX_REGISTER_PROVIDERS(m, config) {
         detector->trackingGeometry = build_tracking_geometry(worldPV);
     });
 
-    auto cleanup = std::make_shared<G4GeometryCleanup>();
+    auto const cleanup = std::make_shared<G4GeometryCleanup>();
 
     m.provide(
          "read_tracking_geometry",

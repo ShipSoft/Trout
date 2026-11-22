@@ -56,8 +56,9 @@ inline std::optional<Acts::BoundTrackParameters> makeSeedFromHitPair(
     const SpectrometerMeasurements::Measurement& m0,
     const SpectrometerMeasurements::Measurement& m1) {
     Acts::Vector3 const direction = (m1.global - m0.global).normalized();
-    if (!direction.allFinite())
+    if (!direction.allFinite()) {
         return std::nullopt;
+    }
 
     Acts::BoundVector pars = Acts::BoundVector::Zero();
     pars[Acts::eBoundLoc0] = m0.local[0];
@@ -106,8 +107,9 @@ Acts::Result<std::pair<typename std::vector<TrackStateProxy>::iterator,
 selectNearestMeasurement(std::vector<TrackStateProxy>& candidates, bool& isOutlier,
                          const Acts::Logger&) {
     isOutlier = false;
-    if (candidates.empty())
+    if (candidates.empty()) {
         return std::pair{candidates.begin(), candidates.end()};
+    }
 
     auto best = candidates.begin();
     double bestDist2 = std::numeric_limits<double>::max();
@@ -116,7 +118,7 @@ selectNearestMeasurement(std::vector<TrackStateProxy>& candidates, bool& isOutli
         auto const meas = it->template calibrated<2>();
         double const dx = pred[Acts::eBoundLoc0] - meas[0];
         double const dy = pred[Acts::eBoundLoc1] - meas[1];
-        double const dist2 = dx * dx + dy * dy;
+        double const dist2 = (dx * dx) + (dy * dy);
         if (dist2 < bestDist2) {
             bestDist2 = dist2;
             best = it;
@@ -186,7 +188,7 @@ class SpectrometerCkf {
         trackStateCreator.measurementSelector.template connect<
             &selectNearestMeasurement<typename TrackContainer::TrackStateProxy>>();
 
-        Acts::GainMatrixUpdater kfUpdater;
+        Acts::GainMatrixUpdater const kfUpdater;
 
         Acts::CombinatorialKalmanFilterExtensions<TrackContainer> extensions;
         extensions.updater.template connect<&Acts::GainMatrixUpdater::operator()<Trajectory>>(
@@ -200,7 +202,7 @@ class SpectrometerCkf {
         propOptions.maxSteps = 500;
         propOptions.pathLimit = 50000. * Acts::UnitConstants::mm;  // stations span ~11 m
 
-        Acts::CombinatorialKalmanFilterOptions<TrackContainer> options(
+        Acts::CombinatorialKalmanFilterOptions<TrackContainer> const options(
             m_geoContext, m_magContext, std::cref(m_calibContext), extensions, propOptions);
 
         TrackContainerBackend trackStorage;
@@ -217,19 +219,22 @@ class SpectrometerCkf {
             // branchStopper is wired up, so the CKF can still hand these back)
             // have no track states at all — skip them rather than crash
             // walking an invalid tip.
-            if (trackProxy.tipIndex() == Acts::kTrackIndexInvalid)
+            if (trackProxy.tipIndex() == Acts::kTrackIndexInvalid) {
                 continue;
+            }
             std::vector<ActsExamples::Index> hits;
             tracks.trackStateContainer().visitBackwards(trackProxy.tipIndex(), [&](auto ts) {
-                if (!ts.typeFlags().isMeasurement())
+                if (!ts.typeFlags().isMeasurement()) {
                     return true;
+                }
                 // isMeasurement() alone doesn't guarantee this — ACTS itself only
                 // asserts it inside getUncalibratedSourceLink() (stripped by our
                 // -DNDEBUG release build), so an unguarded call here threw
                 // bad_optional_access until SpectrometerMeasurements::calibrator
                 // was fixed to actually set it.
-                if (!ts.hasUncalibratedSourceLink())
+                if (!ts.hasUncalibratedSourceLink()) {
                     return true;
+                }
                 // getUncalibratedSourceLink() returns the SourceLink by
                 // value — copy the payload out rather than binding a
                 // reference into the temporary.
@@ -237,8 +242,9 @@ class SpectrometerCkf {
                 hits.push_back(isl.index());
                 return true;
             });
-            if (!hits.empty())
+            if (!hits.empty()) {
                 out.push_back(std::move(hits));
+            }
         }
         return out;
     }
@@ -272,9 +278,9 @@ class SpectrometerCkf {
             }
         };
 
-        Acts::GainMatrixUpdater kfUpdater;
-        Acts::GainMatrixSmoother kfSmoother;
-        MeasurementSurfaceAccessor surfaceAccessor{&measurements};
+        Acts::GainMatrixUpdater const kfUpdater;
+        Acts::GainMatrixSmoother const kfSmoother;
+        MeasurementSurfaceAccessor const surfaceAccessor{&measurements};
 
         Acts::KalmanFitterExtensions<Trajectory> ext;
         ext.surfaceAccessor.template connect<&MeasurementSurfaceAccessor::operator()>(
@@ -289,9 +295,9 @@ class SpectrometerCkf {
         propOptions.maxSteps = 500;
         propOptions.pathLimit = 50000. * Acts::UnitConstants::mm;
 
-        Acts::KalmanFitterOptions<Trajectory> options(m_geoContext, m_magContext,
-                                                      std::cref(m_calibContext), ext, propOptions,
-                                                      &seed.referenceSurface());
+        Acts::KalmanFitterOptions<Trajectory> const options(m_geoContext, m_magContext,
+                                                            std::cref(m_calibContext), ext,
+                                                            propOptions, &seed.referenceSurface());
 
         Acts::VectorTrackContainer trackStorage;
         Trajectory trajStorage;
@@ -304,7 +310,8 @@ class SpectrometerCkf {
             sourceLinks.emplace_back(IndexSourceLink{m.surface->geometryId(), idx});
         }
 
-        auto result = m_fitter->fit(sourceLinks.begin(), sourceLinks.end(), seed, options, tracks);
+        auto const result =
+            m_fitter->fit(sourceLinks.begin(), sourceLinks.end(), seed, options, tracks);
         return fromActsFitResult(result, tracks, m_geoContext);
     }
 

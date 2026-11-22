@@ -39,7 +39,7 @@ class HistoFileService {
 
     void put(char const* name, char const* title, ROOT::Experimental::RHist<double> const& h) {
         try {
-            std::scoped_lock lock{mutex_};
+            std::scoped_lock const lock{mutex_};
             auto th1 = ROOT::Experimental::Hist::ConvertToTH1D(h);
             th1->SetNameTitle(name, title);
             file_->Put(name, *th1);

@@ -48,9 +48,10 @@ SHiP::FieldMapSource::MagnetConfig spectrometerMagnet(phlex::configuration const
         auto const name = config.get_if_present<std::string>("magnet").value_or("Spectrometer");
         auto magnets = SHiP::readFieldMapPlacements(*placements).magnets;
         auto const it = std::ranges::find(magnets, name, &SHiP::FieldMapSource::MagnetConfig::name);
-        if (it == magnets.end())
+        if (it == magnets.end()) {
             throw std::invalid_argument("acts_field_provider: " + *placements + " has no magnet '" +
                                         name + "'");
+        }
         return std::move(*it);
     }
 
@@ -63,8 +64,9 @@ SHiP::FieldMapSource::MagnetConfig spectrometerMagnet(phlex::configuration const
     // Maps are stored in their own frame; `translation` (mm) places the
     // map's origin in the global frame. Omitted means the origins coincide.
     if (auto const t = config.get_if_present<std::vector<double>>("translation")) {
-        if (t->size() != magnet.translation.size())
+        if (t->size() != magnet.translation.size()) {
             throw std::invalid_argument("acts_field_provider: translation needs 3 values (mm)");
+        }
         std::ranges::transform(*t, magnet.translation.begin(),
                                [](double v) { return v * SHiP::units::mm; });
     }
