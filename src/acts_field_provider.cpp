@@ -19,6 +19,7 @@
 #include <SHiP/FieldService/ActsFieldAdapter.h>
 #include <SHiP/FieldService/FieldMap.h>
 #include <SHiP/FieldService/FieldMapIO.h>
+#include <SHiP/Units.hpp>
 #include <algorithm>
 #include <array>
 #include <memory>
@@ -64,7 +65,8 @@ SHiP::FieldMapSource::MagnetConfig spectrometerMagnet(phlex::configuration const
     if (auto const t = config.get_if_present<std::vector<double>>("translation")) {
         if (t->size() != magnet.translation.size())
             throw std::invalid_argument("acts_field_provider: translation needs 3 values (mm)");
-        std::ranges::copy(*t, magnet.translation.begin());
+        std::ranges::transform(*t, magnet.translation.begin(),
+                               [](double v) { return v * SHiP::units::mm; });
     }
     return magnet;
 }
