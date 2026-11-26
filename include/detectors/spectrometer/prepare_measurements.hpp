@@ -10,12 +10,11 @@
 namespace SHiP::trout {
 
 // prepare_measurements (spill layer, transform): straw_tubes_hits (+ their
-// ids and the time window) + tracking_geometry -> SpillContext
-// (SpectrometerMeasurements + SpectrometerCkf + the window), built ONCE per
-// spill and shared by every seed spawned
-// downstream (rather than rebuilt per seed, which would also reload the
-// field file every time). kStrawSeedMarginNs (io/StrawTiming.hpp) widens the
-// window's owned slice into the time range generate_seeds seeds from (see
+// ids and the time window) + the DetectorGeometry and DetectorField
+// resources -> SpillContext (SpectrometerMeasurements + SpectrometerCkf + the
+// window), built ONCE per spill and shared by every seed spawned downstream
+// rather than rebuilt per seed. kStrawSeedMarginNs (io/StrawTiming.hpp) widens
+// the window's owned slice into the time range generate_seeds seeds from (see
 // SpillContext).
 void register_prepare_measurements(ModuleProxy const& m,
                                    phlex::experimental::identifier const& layer);
