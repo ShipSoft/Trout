@@ -12,6 +12,7 @@
 #include <ROOT/Hist/ConvertToTH1.hxx>
 #include <ROOT/RFile.hxx>
 #include <ROOT/RHist.hxx>
+#include <ROOT/RVersion.hxx>
 #include <TH1D.h>
 
 #include <cstdint>
@@ -24,10 +25,17 @@
 
 namespace SHiP::trout {
 
+// ROOT 6.42 moved RFile out of ROOT::Experimental.
+#if ROOT_VERSION_CODE >= ROOT_VERSION(6, 42, 0)
+using RFile = ROOT::RFile;
+#else
+using RFile = ROOT::Experimental::RFile;
+#endif
+
 class HistoFileService {
    public:
     explicit HistoFileService(std::string filename)
-        : filename_{std::move(filename)}, file_{ROOT::Experimental::RFile::Recreate(filename_)} {}
+        : filename_{std::move(filename)}, file_{RFile::Recreate(filename_)} {}
 
     void put(char const* name, char const* title, ROOT::Experimental::RHist<double> const& h) {
         try {
@@ -47,7 +55,7 @@ class HistoFileService {
 
    private:
     std::string filename_;
-    std::unique_ptr<ROOT::Experimental::RFile> file_;
+    std::unique_ptr<RFile> file_;
     std::mutex mutex_;
 };
 
