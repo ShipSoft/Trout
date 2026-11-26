@@ -243,6 +243,8 @@ PHLEX_REGISTER_PROVIDERS(m, config) {
     // as aegir's geometry_geomodel_provider.
     if (!std::filesystem::exists(db_file)) {
         auto resolved = std::filesystem::path(db_file).filename();
+        // Provider registration runs once, before any worker thread starts.
+        // NOLINTNEXTLINE(concurrency-mt-unsafe)
         if (auto const* root = std::getenv("SHIPGEOMETRY_ROOT")) {
             resolved = std::filesystem::path(root) / "share" / "geometry" / resolved;
         }
