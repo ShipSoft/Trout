@@ -38,11 +38,6 @@ acts-core = "48.*"
 phlex = ">=0.4.1"
 root = ">=6.36"
 geant4 = ">=11.3"
-# Temporary: SHiPGeometryServiceConfig.cmake finds Geant4, whose config needs
-# the expat headers, but the shipgeometryservice package does not depend on
-# expat (conda-forge/geant4-feedstock#115). Up to geomodel 6.32, expat came in
-# through coin3d. Remove once shipgeometryservice declares it.
-expat = "*"
 random123 = "*"
 # SHiP::random::PhiloxRng, for make_test_input.
 # ship-random accepts only the requested minor in find_package (SameMinorVersion),

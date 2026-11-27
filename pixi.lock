@@ -795,7 +795,7 @@ environments:
       - conda: https://prefix.dev/ship-experiment/stable/linux-aarch64/root_base-6.42.00-cxx23_h4f4616b_0.conda
       - conda: https://prefix.dev/ship-experiment/stable/linux-aarch64/shipdatamodel-0.6.0-h1fb7882_1.conda
       - conda: https://prefix.dev/ship-experiment/stable/linux-aarch64/shipgeometry-0.3.0-h300e7cd_1.conda
-      - conda: https://prefix.dev/ship-experiment/stable/linux-aarch64/shipgeometryservice-0.6.0-h300e7cd_3.conda
+      - conda: https://prefix.dev/ship-experiment/stable/linux-aarch64/shipgeometryservice-0.6.0-h91f2790_4.conda
       - conda: https://prefix.dev/ship-experiment/stable/noarch/random123-1.14.0-h4616a5c_1.conda
       - conda: https://prefix.dev/ship-experiment/stable/noarch/ship-field-maps-0.1.1-h4616a5c_0.conda
       - conda: https://prefix.dev/ship-experiment/stable/noarch/ship-random-0.4.0-hcf0848a_0.conda
@@ -1561,7 +1561,7 @@ environments:
       - conda: https://prefix.dev/ship-experiment/stable/linux-aarch64/root_base-6.42.00-cxx23_h4f4616b_0.conda
       - conda: https://prefix.dev/ship-experiment/stable/linux-aarch64/shipdatamodel-0.6.0-h1fb7882_1.conda
       - conda: https://prefix.dev/ship-experiment/stable/linux-aarch64/shipgeometry-0.3.0-h300e7cd_1.conda
-      - conda: https://prefix.dev/ship-experiment/stable/linux-aarch64/shipgeometryservice-0.6.0-h300e7cd_3.conda
+      - conda: https://prefix.dev/ship-experiment/stable/linux-aarch64/shipgeometryservice-0.6.0-h91f2790_4.conda
       - conda: https://prefix.dev/ship-experiment/stable/noarch/random123-1.14.0-h4616a5c_1.conda
       - conda: https://prefix.dev/ship-experiment/stable/noarch/ship-field-maps-0.1.1-h4616a5c_0.conda
       - conda: https://prefix.dev/ship-experiment/stable/noarch/ship-random-0.4.0-hcf0848a_0.conda
@@ -2331,7 +2331,7 @@ environments:
       - conda: https://prefix.dev/ship-experiment/stable/linux-aarch64/root_base-6.42.00-cxx23_h4f4616b_0.conda
       - conda: https://prefix.dev/ship-experiment/stable/linux-aarch64/shipdatamodel-0.6.0-h1fb7882_1.conda
       - conda: https://prefix.dev/ship-experiment/stable/linux-aarch64/shipgeometry-0.3.0-h300e7cd_1.conda
-      - conda: https://prefix.dev/ship-experiment/stable/linux-aarch64/shipgeometryservice-0.6.0-h300e7cd_3.conda
+      - conda: https://prefix.dev/ship-experiment/stable/linux-aarch64/shipgeometryservice-0.6.0-h91f2790_4.conda
       - conda: https://prefix.dev/ship-experiment/stable/noarch/random123-1.14.0-h4616a5c_1.conda
       - conda: https://prefix.dev/ship-experiment/stable/noarch/ship-field-maps-0.1.1-h4616a5c_0.conda
       - conda: https://prefix.dev/ship-experiment/stable/noarch/ship-random-0.4.0-hcf0848a_0.conda
@@ -3101,7 +3101,7 @@ environments:
       - conda: https://prefix.dev/ship-experiment/stable/linux-aarch64/root_base-6.42.00-cxx23_h4f4616b_0.conda
       - conda: https://prefix.dev/ship-experiment/stable/linux-aarch64/shipdatamodel-0.6.0-h1fb7882_1.conda
       - conda: https://prefix.dev/ship-experiment/stable/linux-aarch64/shipgeometry-0.3.0-h300e7cd_1.conda
-      - conda: https://prefix.dev/ship-experiment/stable/linux-aarch64/shipgeometryservice-0.6.0-h300e7cd_3.conda
+      - conda: https://prefix.dev/ship-experiment/stable/linux-aarch64/shipgeometryservice-0.6.0-h91f2790_4.conda
       - conda: https://prefix.dev/ship-experiment/stable/noarch/random123-1.14.0-h4616a5c_1.conda
       - conda: https://prefix.dev/ship-experiment/stable/noarch/ship-field-maps-0.1.1-h4616a5c_0.conda
       - conda: https://prefix.dev/ship-experiment/stable/noarch/ship-random-0.4.0-hcf0848a_0.conda
@@ -3887,7 +3887,7 @@ environments:
       - conda: https://prefix.dev/ship-experiment/stable/linux-aarch64/root_base-6.42.00-cxx23_h4f4616b_0.conda
       - conda: https://prefix.dev/ship-experiment/stable/linux-aarch64/shipdatamodel-0.6.0-h1fb7882_1.conda
       - conda: https://prefix.dev/ship-experiment/stable/linux-aarch64/shipgeometry-0.3.0-h300e7cd_1.conda
-      - conda: https://prefix.dev/ship-experiment/stable/linux-aarch64/shipgeometryservice-0.6.0-h300e7cd_3.conda
+      - conda: https://prefix.dev/ship-experiment/stable/linux-aarch64/shipgeometryservice-0.6.0-h91f2790_4.conda
       - conda: https://prefix.dev/ship-experiment/stable/noarch/random123-1.14.0-h4616a5c_1.conda
       - conda: https://prefix.dev/ship-experiment/stable/noarch/ship-field-maps-0.1.1-h4616a5c_0.conda
       - conda: https://prefix.dev/ship-experiment/stable/noarch/ship-random-0.4.0-hcf0848a_0.conda
@@ -15128,31 +15128,31 @@ packages:
     - shipgeometry >=0.3.0,<0.4.0a0
   size: 304322
   timestamp: 1793622952396
-- conda: https://prefix.dev/ship-experiment/stable/linux-aarch64/shipgeometryservice-0.6.0-h300e7cd_3.conda
-  sha256: 6ba5cfc8cdc96d661d405f9a639569026953ac293b0eef5441a4ef8438c99c06
-  md5: 48ad44a0ada46703f698ef7c1b9ef01c
+- conda: https://prefix.dev/ship-experiment/stable/linux-aarch64/shipgeometryservice-0.6.0-h91f2790_4.conda
+  sha256: 1ef294b074c444355a8278c20bfb1e7afc384ec472d5ef6f76201d405fee9e72
+  md5: 339ffe968bde6b2fd970bc567eae6333
   depends:
   - expat
   - zlib
   - freetype
   - libstdcxx >=15
   - libgcc >=15
+  - mp-units >=2.5.0,<2.6.0a0
+  - libzlib >=1.3.2,<2.0a0
+  - geomodel-g4 >=6.33.0,<6.34.0a0
+  - geant4 >=11.4.3,<11.4.4.0a0
   - geomodel-core >=6.33.0,<6.34.0a0
   - libfreetype >=2.14.3
   - libfreetype6 >=2.14.3
-  - libexpat >=2.9.0,<3.0a0
   - eigen-abi >=5.0.1.100,<5.0.1.101.0a0
   - shipgeometry >=0.3.0,<0.4.0a0
-  - mp-units >=2.5.0,<2.6.0a0
-  - libzlib >=1.3.2,<2.0a0
-  - geant4 >=11.4.3,<11.4.4.0a0
-  - geomodel-g4 >=6.33.0,<6.34.0a0
+  - libexpat >=2.11.0,<3.0a0
   license: LGPL-3.0-or-later
   run_exports:
     weak:
     - shipgeometryservice >=0.6.0,<0.7.0a0
-  size: 64075
-  timestamp: 1795622736833
+  size: 64231
+  timestamp: 1795808921224
 - conda: https://prefix.dev/ship-experiment/stable/noarch/random123-1.14.0-h4616a5c_1.conda
   sha256: ff55db42aa3b6f81456675f05d48546da04bea61e0e342188ab781c633586012
   md5: a43dc6c01f64145e2e9d8959c6d405f6
