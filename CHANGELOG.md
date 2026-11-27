@@ -2,6 +2,48 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.4.0] - 2026-11-27
+
+### Features
+
+- Take the spectrometer field from a placement manifest
+
+### Bug fixes
+
+- Reject translation alongside placements
+- Use ROOT::RFile with ROOT 6.42
+- Keep linked libraries on macOS without --no-as-needed
+
+### Refactor
+
+- *(tracking)* Give fit_seed the spill context as its own input
+
+### Documentation
+
+- *(io)* Drop the selector lvalue-move note
+
+### Performance
+
+- *(tracking)* Let generate_seeds run spills concurrently
+
+### Miscellaneous
+
+- Build and test on linux-aarch64
+- Open automated PRs as ship's mate
+- Sync shared configs
+- Update pixi lock file
+
+### Build
+
+- Move to shipgeometry 0.3.0
+- Require ACTS 48
+- Lock field-service 0.5.0 and ship-field-maps 0.1.0
+- Cap field-service at <0.6 to match CMake requirement
+- Relock libjsonnet from conda-forge
+- Look up Boost without the json component
+- Depend on expat until shipgeometryservice does
+- Move to field-service 0.6
+- Lock ROOT 6.42
 ## [0.3.1] - 2026-10-20
 
 ### Build
