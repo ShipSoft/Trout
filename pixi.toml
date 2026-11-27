@@ -65,6 +65,20 @@ ninja = "*"
 # >=2 brings GCC 15, which phlex 0.4.1's headers need (std::from_range).
 cxx-compiler = ">=2"
 
+# Static analysis. clang-tidy lives here rather than in [feature.lint] because
+# it replays the commands in compile_commands.json and so needs the same
+# headers the compiler saw; feature.lint is a separate solve group and could
+# drift from them. clang-tools provides clang-tidy but does not depend on the
+# clang package that ships clang's own builtin headers (stddef.h and friends),
+# and without those every translation unit fails to parse.
+# Both carry a >=20 floor: .clang-tidy's ExcludeHeaderFilterRegex needs 19,
+# and the clang-tidy-diff task's -only-check-in-db needs 20. They have to
+# resolve to the same major: clang-tidy looks for its builtin headers under
+# lib/clang/<major>/include, which is what the clang package supplies. Both
+# come from the same llvm feedstock, so conda keeps them in step.
+clang = ">=20"
+clang-tools = ">=20"
+
 # shipdatamodel as its released conda build (prefix.dev/ship-experiment/stable). Held in a
 # feature that every environment pulls in, deliberately NOT in the base
 # [dependencies]: those are shared by all environments, so a channel spec there
@@ -80,8 +94,12 @@ scripts = ["activate.sh"]
 
 [tasks]
 
+# CMake turns C++20 module scanning on by default and then writes GCC-only
+# flags (-fmodules-ts, -fdeps-format=p1689r5) into compile_commands.json, which
+# clang-tidy cannot parse. trout has no modules, so switch the scan off.
 configure = { cmd = """
 cmake -S . -B build -G Ninja \
+    -DCMAKE_CXX_SCAN_FOR_MODULES=OFF \
     -DCMAKE_INSTALL_PREFIX=$CONDA_PREFIX \
     -DCMAKE_INSTALL_LIBDIR=lib \
     -DCMAKE_PREFIX_PATH=$CONDA_PREFIX
@@ -92,6 +110,39 @@ install = { cmd = "cmake --install build", depends-on = ["build"] }
 test = { cmd = "ctest --test-dir build --output-on-failure", depends-on = ["build"] }
 smoke = { cmd = "scripts/smoke.sh", depends-on = ["build"] }
 clean = "rm -rf build"
+
+# Static analysis, mirroring ShipSoft/.github's clang-tidy.yml. `clang-tidy`
+# reports the whole tree; `clang-tidy-diff` reports only what CI gates on,
+# namely findings on lines you changed relative to main. -source-filter is a
+# Python regex (run-clang-tidy is a Python script), unlike the llvm::Regex
+# patterns in .clang-tidy. These use TOML literal strings so the backslashes
+# survive.
+clang-tidy = { cmd = '''
+run-clang-tidy -p build -j $(nproc) -quiet \
+    -source-filter '^(?!.*(/G__|Dict[.]cxx|/_deps/|/CMakeFiles/)).*' \
+    -extra-arg=-isystem$CONDA_PREFIX/include
+''', depends-on = ["build"] }
+# clang-tidy-diff.py ships with clang-tools but is not on PATH. Diffing against
+# origin/main alone, with no second commit, includes staged and unstaged work, so
+# this sees the patch in your tree rather than only what you have committed.
+#
+# It is a quick check, not the same thing CI does: clang-tidy-diff only looks at
+# files in the compilation database, so a changed *header* is not analysed here.
+# CI maps headers to the translation units that include them. For a header-only
+# change, run `pixi run clang-tidy` or let CI report it.
+#
+# The diff goes to a file and the consumer reads it back, rather than the two
+# being piped: pixi does not run tasks under `set -o pipefail`, so a failing
+# `git diff` (no origin/main in a fresh or shallow clone, say) would otherwise be
+# swallowed. clang-tidy-diff.py accepts the empty input and exits 0, reporting
+# "No relevant changes found" about a tree it never looked at.
+clang-tidy-diff = { cmd = '''
+git diff --unified=0 --diff-filter=d origin/main -- '*.cpp' '*.hpp' '*.cxx' '*.h' \
+    > build/clang-tidy-diff.patch \
+  && python $CONDA_PREFIX/share/clang/clang-tidy-diff.py -p1 -path build -j $(nproc) \
+      -quiet -only-check-in-db -extra-arg=-isystem$CONDA_PREFIX/include \
+      < build/clang-tidy-diff.patch
+''', depends-on = ["build"] }
 
 [feature.bench.dependencies]
 hyperfine = "*"

@@ -37,15 +37,16 @@ namespace {
 template <typename Hit, typename Registrar>
 void provide_hit_type(Registrar& m, std::string const& input_file, std::string const& ntuple_name,
                       std::string const& suffix, phlex::experimental::identifier const& layer) {
-    std::shared_ptr<ROOT::RNTupleReader> reader =
+    std::shared_ptr<ROOT::RNTupleReader> const reader =
         ROOT::RNTupleReader::Open(ntuple_name, input_file);
     auto view = reader->GetView<Hit>("hit");
 
     auto hits = std::make_shared<std::vector<Hit>>();
     auto const n_entries = reader->GetNEntries();
     hits->reserve(n_entries);
-    for (ROOT::NTupleSize_t i = 0; i < n_entries; ++i)
+    for (ROOT::NTupleSize_t i = 0; i < n_entries; ++i) {
         hits->push_back(view(i));
+    }
 
     // Provide the shared_ptr itself: the collection is read once and shared,
     // rather than deep-copied into every consumer on every spill.

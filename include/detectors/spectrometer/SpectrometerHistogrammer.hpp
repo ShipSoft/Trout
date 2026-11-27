@@ -36,7 +36,7 @@ class SpectrometerHistogrammer {
           f_ref_z_{h_ref_z_} {}
 
     void observe(std::vector<SHiP::TrackFitResult> const& tracks) {
-        auto& ctxs = ensure_contexts();
+        auto const& ctxs = ensure_contexts();
         ctxs.multiplicity->Fill(static_cast<double>(tracks.size()));
         for (auto const& track : tracks) {
             ctxs.ref_x->Fill(track.ref_loc[0]);

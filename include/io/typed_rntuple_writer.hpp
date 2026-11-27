@@ -87,7 +87,7 @@ class TypedHitWriter {
         auto model = ROOT::RNTupleModel::CreateBare();
         model->MakeField<Hit>("hit");
 
-        std::scoped_lock lock{file_service_.mutex()};
+        std::scoped_lock const lock{file_service_.mutex()};
 
         writer_ = ROOT::RNTupleParallelWriter::Append(std::move(model), ntuple_name,
                                                       file_service_.file());
@@ -109,7 +109,7 @@ class TypedHitWriter {
         if (status.ShouldFlushCluster()) {
             state.context->FlushColumns();
 
-            std::scoped_lock lock{file_service_.mutex()};
+            std::scoped_lock const lock{file_service_.mutex()};
             state.context->FlushCluster();
         }
     }
@@ -178,8 +178,9 @@ class HitRNTupleWriter {
     // whenever this is actually called.
     template <typename Hit>
     void write_sim(std::shared_ptr<std::vector<Hit>> const& hits) {
-        if (hits)
+        if (hits) {
             write_all(*hits, sim_writers_->template get<Hit>());
+        }
     }
 
    private:

@@ -88,9 +88,10 @@ class SimTruthHistogrammer {
 
     void observe(std::shared_ptr<SimHits> const& sim_hits,
                  std::shared_ptr<SimParticles> const& sim_particles) {
-        if (!sim_hits || !sim_particles)
+        if (!sim_hits || !sim_particles) {
             return;
-        auto& ctxs = ensure_contexts();
+        }
+        auto const& ctxs = ensure_contexts();
         ctxs.hit_multiplicity->Fill(static_cast<double>(sim_hits->size()));
         for (auto const& hit : *sim_hits) {
             ctxs.hit_x->Fill(hit.position[0]);
@@ -168,24 +169,27 @@ class RecoNoop {
 void register_rec_output(ModuleProxy const& m, phlex::configuration const& config) {
     using namespace phlex;
 
-    auto mode = config.get<std::string>("mode", std::string{"reco"});
-    auto rntuple_file =
+    auto const mode = config.get<std::string>("mode", std::string{"reco"});
+    auto const rntuple_file =
         config.get<std::string>("rntuple_file", std::string{"reconstructed_objects.root"});
-    auto histo_file = config.get<std::string>("histo_file", std::string{"reco_validation.root"});
-    auto isSim = config.get<bool>("simulation", false);
+    auto const histo_file =
+        config.get<std::string>("histo_file", std::string{"reco_validation.root"});
+    auto const isSim = config.get<bool>("simulation", false);
 
-    if (mode != "reco" && mode != "noop")
+    if (mode != "reco" && mode != "noop") {
         throw std::runtime_error("Unknown rec_output_module mode: '" + mode +
                                  "' (expected 'reco' or 'noop')");
+    }
 
     // Recreating the histogram file at teardown would truncate the RNTuple
     // output if both are configured to the same path.
     if (std::filesystem::weakly_canonical(rntuple_file) ==
-        std::filesystem::weakly_canonical(histo_file))
+        std::filesystem::weakly_canonical(histo_file)) {
         throw std::runtime_error(
             "rec_output_module: rntuple_file and histo_file must "
             "differ (both resolve to '" +
             rntuple_file + "')");
+    }
 
     // Shorthand for the selectors below, built from string literals.
     auto selector = [](char const* creator, char const* layer, char const* suffix) {
@@ -194,7 +198,7 @@ void register_rec_output(ModuleProxy const& m, phlex::configuration const& confi
                                 .suffix = phlex::experimental::identifier{suffix}};
     };
 
-    auto passthrough = [&](char const* suffix) {
+    auto const passthrough = [&](char const* suffix) {
         return selector("rntuple_source", "spill", suffix);
     };
 
@@ -202,13 +206,13 @@ void register_rec_output(ModuleProxy const& m, phlex::configuration const& confi
     // `sel` input selector — collapses the repeated
     // `writer.observe(...).input_family(...)` pattern below to one line
     // per writer method.
-    auto register_writer = [](auto& target, char const* name, auto member_ptr,
-                              product_selector sel) {
+    auto const register_writer = [](auto& target, char const* name, auto member_ptr,
+                                    product_selector sel) {
         target.observe(name, member_ptr, concurrency::unlimited).input_family(std::move(sel));
     };
 
     if (mode == "noop") {
-        auto noop = m.make<RecoNoop>();
+        auto const noop = m.make<RecoNoop>();
         if (isSim) {
             noop.observe("noop", &RecoNoop::observe, concurrency::unlimited)
                 .input_family(selector("fit_seed", "seed", "track_fit_result"),
@@ -252,7 +256,7 @@ void register_rec_output(ModuleProxy const& m, phlex::configuration const& confi
 
     // One shared output file; each histogrammer below Put()s its own
     // histograms into it at its own destruction (see HistoFileService).
-    auto histo_file_service = std::make_shared<HistoFileService>(histo_file);
+    auto const histo_file_service = std::make_shared<HistoFileService>(histo_file);
 
     auto spectrometer_histo = m.make<SpectrometerHistogrammer>(histo_file_service);
     register_writer(spectrometer_histo, "validate_spectrometer", &SpectrometerHistogrammer::observe,
@@ -276,7 +280,7 @@ void register_rec_output(ModuleProxy const& m, phlex::configuration const& confi
                     selector("timing_detector_reco", "spill", "timing_detector_reco"));
 
     if (isSim) {
-        auto sim_truth_histo = m.make<SimTruthHistogrammer>(histo_file_service);
+        auto const sim_truth_histo = m.make<SimTruthHistogrammer>(histo_file_service);
         sim_truth_histo
             .observe("validate_sim_truth", &SimTruthHistogrammer::observe, concurrency::unlimited)
             .input_family(passthrough("sim_hits"), passthrough("sim_particles"));

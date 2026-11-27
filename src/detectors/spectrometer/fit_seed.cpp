@@ -33,17 +33,20 @@ void register_fit_seed(ModuleProxy const& m, phlex::experimental::identifier con
          [](SeedHitPair const& pair,
             std::shared_ptr<SpillContext> const& ctx) -> std::vector<SHiP::TrackFitResult> {
              std::vector<SHiP::TrackFitResult> results;
-             if (!ctx || !ctx->measurements || !ctx->ckf)
+             if (!ctx || !ctx->measurements || !ctx->ckf) {
                  return results;
+             }
              auto const& m0 = ctx->measurements->measurements()[pair.idx0];
              auto const& m1 = ctx->measurements->measurements()[pair.idx1];
              auto seed = makeSeedFromHitPair(m0, m1);
-             if (!seed)
+             if (!seed) {
                  return results;
-             auto candidates = ctx->ckf->findCandidateHits(*seed, *ctx->measurements);
+             }
+             auto const candidates = ctx->ckf->findCandidateHits(*seed, *ctx->measurements);
              for (auto const& hits : candidates) {
-                 if (hits.size() < kMinHitsPerTrack)
+                 if (hits.size() < kMinHitsPerTrack) {
                      continue;
+                 }
                  results.push_back(ctx->ckf->refit(*seed, *ctx->measurements, hits));
              }
              return results;

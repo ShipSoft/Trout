@@ -73,15 +73,22 @@ class SpectrometerMeasurements {
                     best = s;
                 }
             }
-            if (!best)
+            if (!best) {
                 continue;  // no station within window — drop the hit
+            }
             auto locRes = best->globalToLocal(gctx, global, Acts::Vector3::UnitZ(), zWindow);
-            if (!locRes.ok())
+            if (!locRes.ok()) {
                 continue;
+            }
             double const time = hit.time * Acts::UnitConstants::ns;
-            auto const cov = hitCovariance(HitUncertaintyContext{global, time});
+            auto const cov =
+                hitCovariance(HitUncertaintyContext{.globalPosition = global, .time = time});
             auto const idx = static_cast<ActsExamples::Index>(m_measurements.size());
-            m_measurements.push_back(Measurement{best, global, locRes.value(), cov, time});
+            m_measurements.push_back(Measurement{.surface = best,
+                                                 .global = global,
+                                                 .local = locRes.value(),
+                                                 .covariance = cov,
+                                                 .time = time});
             m_sourceLinks.emplace(best->geometryId(), idx);
         }
     }

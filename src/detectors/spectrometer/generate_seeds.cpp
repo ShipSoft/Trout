@@ -41,19 +41,22 @@ constexpr double kMinForwardCosine = 0.9;
 class SeedGenObject {
    public:
     explicit SeedGenObject(std::shared_ptr<SpillContext> const& ctx) : ctx_{ctx} {
-        if (!ctx_ || !ctx_->measurements)
+        if (!ctx_ || !ctx_->measurements) {
             return;
+        }
 
         // Station geometry ids assigned in acts_geometry_provider.cpp: volume 1,
         // sensitive = station index (1-based).
         auto const station1Id = Acts::GeometryIdentifier{}.withVolume(1).withSensitive(1);
         auto const station2Id = Acts::GeometryIdentifier{}.withVolume(1).withSensitive(2);
         for (auto const& sl :
-             ActsExamples::selectModule(ctx_->measurements->sourceLinks(), station1Id))
+             ActsExamples::selectModule(ctx_->measurements->sourceLinks(), station1Id)) {
             hits1_.push_back(sl.index());
+        }
         for (auto const& sl :
-             ActsExamples::selectModule(ctx_->measurements->sourceLinks(), station2Id))
+             ActsExamples::selectModule(ctx_->measurements->sourceLinks(), station2Id)) {
             hits2_.push_back(sl.index());
+        }
     }
 
     std::optional<std::size_t> initial_value() const { return find_next_valid(0); }
@@ -63,8 +66,9 @@ class SeedGenObject {
     // direction is forward-going enough (see kMinForwardCosine), or nullopt
     // if none remain. Shared by initial_value() and the unfold function.
     std::optional<std::size_t> find_next_valid(std::size_t from) const {
-        if (hits1_.empty() || hits2_.empty())
+        if (hits1_.empty() || hits2_.empty()) {
             return std::nullopt;
+        }
         auto const& meas = ctx_->measurements->measurements();
         auto const total = hits1_.size() * hits2_.size();
         double const window = kTimeWindowNs * Acts::UnitConstants::ns;
@@ -74,11 +78,13 @@ class SeedGenObject {
             auto const& m0 = meas[hits1_[i]];
             auto const& m1 = meas[hits2_[j]];
             double const dt = std::abs(m0.time - m1.time);
-            if (dt > window)
+            if (dt > window) {
                 continue;
+            }
             Acts::Vector3 const dir = (m1.global - m0.global).normalized();
-            if (dir.z() >= kMinForwardCosine)
+            if (dir.z() >= kMinForwardCosine) {
                 return k;
+            }
         }
         return std::nullopt;
     }
@@ -86,7 +92,7 @@ class SeedGenObject {
     SeedHitPair seedAt(std::size_t k) const {
         auto const i = k / hits2_.size();
         auto const j = k % hits2_.size();
-        return SeedHitPair{hits1_[i], hits2_[j]};
+        return SeedHitPair{.idx0 = hits1_[i], .idx1 = hits2_[j]};
     }
 
    private:

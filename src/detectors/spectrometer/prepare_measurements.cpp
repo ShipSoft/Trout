@@ -25,15 +25,17 @@ void register_prepare_measurements(ModuleProxy const& m,
             std::shared_ptr<DetectorGeometry> const& detector,
             std::shared_ptr<DetectorField> const& field) -> std::shared_ptr<SpillContext> {
              auto ctx = std::make_shared<SpillContext>();
-             if (!ip || !detector || !detector->trackingGeometry || !field || !field->field)
+             if (!ip || !detector || !detector->trackingGeometry || !field || !field->field) {
                  return ctx;
+             }
 
              std::vector<SHiP::RecHit> hits;
              hits.reserve(ip->size());
-             for (auto const& h : *ip)
+             for (auto const& h : *ip) {
                  hits.push_back(h.rec_hit);
+             }
 
-             auto gctx = Acts::GeometryContext::dangerouslyDefaultConstruct();
+             auto const gctx = Acts::GeometryContext::dangerouslyDefaultConstruct();
              ctx->measurements = std::make_shared<SpectrometerMeasurements>(
                  *detector->trackingGeometry, gctx, hits);
              ctx->ckf = std::make_shared<SpectrometerCkf>(detector->trackingGeometry, field->field);
