@@ -2,7 +2,7 @@
 //
 // SPDX-License-Identifier: LGPL-3.0-or-later
 
-// read_digitised_hits.cpp — Phlex provider plugin
+// read_digitised_hits.cpp — Phlex source and driver plugin
 //
 // Reads shannon's digitised-hit output (one RNTuple per detector type, each
 // a flat record-per-hit stream — SHiP has no discrete "event", just a
@@ -12,10 +12,17 @@
 // product, plus a pass-through copy of the raw SimHits (and, with
 // sim_particles: true, SimParticles).
 //
+// The plugin registers two things:
+//   - a phlex source (DigitisedHitsSource), which scans the input once and
+//     owns the resulting TimeWindowing, and provides the products;
+//   - a driver, which is handed that source (the workflow's driver block
+//     names it in uses_sources) and emits one data cell per window it owns.
+// So the windows are worked out in one place and the driver can't disagree
+// with the reader about how many there are.
+//
 // Hits are never loaded whole. A first pass over just the time columns finds
-// the time range — and so the number of windows, which time_window_driver
-// derives the same way (io/DigitisedTimeScan.hpp) to emit one "spill" data
-// cell per window — and how far out of time order each RNTuple is.
+// the time range — and so the number of windows — and how far out of time
+// order each RNTuple is (io/DigitisedTimeScan.hpp).
 // Each RNTuple is then read in one of two ways:
 //
 //   - streamed, if no entry is more than max_lag_ns earlier than an entry
@@ -36,10 +43,18 @@
 
 #include "io/DigitisedTimeScan.hpp"
 #include "io/TimeWindow.hpp"
+#include "phlex/concurrency.hpp"
 #include "phlex/configuration.hpp"
 #include "phlex/core/product_selector.hpp"
+#include "phlex/core/provider_node.hpp"
+#include "phlex/driver.hpp"
+#include "phlex/model/algorithm_name.hpp"
 #include "phlex/model/data_cell_index.hpp"
-#include "phlex/module.hpp"
+#include "phlex/model/fixed_hierarchy.hpp"
+#include "phlex/model/identifier.hpp"
+#include "phlex/model/product_specification.hpp"
+#include "phlex/model/products.hpp"
+#include "phlex/model/type_id.hpp"
 #include "phlex/source.hpp"
 
 #include <ROOT/RNTupleReader.hxx>
@@ -114,7 +129,7 @@ class WindowedStream {
         if (i >= windowing_.size())
             throw std::out_of_range(std::format(
                 "read_digitised_hits: window {} requested but the input only spans {} windows; "
-                "the driver must be time_window_driver with the same input_file and step_ns",
+                "the driver must be read_digitised_hits with this source in uses_sources",
                 i, windowing_.size()));
         auto const range = windowing_.at(i).padded(padding_);
         return indexed_ ? from_index(range.lo, range.hi) : from_stream(i, range.lo, range.hi);
@@ -220,47 +235,148 @@ class WindowedStream {
     std::size_t first_unserved_{0};
 };
 
-template <typename T, typename Registrar>
-void provide_stream(Registrar& m, std::shared_ptr<WindowedStream<T>> stream,
-                    std::string const& suffix, phlex::experimental::identifier const& layer) {
-    // Provide the shared_ptr itself, so consumers share one copy of the
-    // window's hits rather than each getting their own.
-    m.provide(
-         "read_" + suffix,
-         [stream = std::move(stream)](phlex::data_cell_index const& id)
-             -> std::shared_ptr<std::vector<T>> { return stream->window(id.number()); },
-         phlex::concurrency::serial)
-        .output_product("rntuple_source", phlex::experimental::identifier{suffix}, layer);
-}
+// The creator every consumer selects these products by (creator =
+// "rntuple_source"). Each product is made by its own algorithm under it,
+// rntuple_source:read_<suffix>, because phlex names an implicit provider
+// after its product's creator and allows only one product per creator. A
+// selector's creator matches either half of the name, so consumers needn't
+// change.
+constexpr char const* kCreator = "rntuple_source";
 
-// What every WindowedStream of one input shares, so each collection's stream
-// can be made with just its RNTuple name and time field; its padding comes
-// from DigitisedTimeScan.hpp.
-struct WindowedReading {
+struct SourceSettings {
     std::string input_file;
-    TimeWindowing windowing;
-    double max_lag;
-    std::map<std::string, bool> indexed;
-    std::map<std::string, TimePadding> padding;
-
-    template <typename T>
-    std::shared_ptr<WindowedStream<T>> stream(std::string const& ntuple_name,
-                                              char const* field) const {
-        return std::make_shared<WindowedStream<T>>(input_file, ntuple_name, field, windowing,
-                                                   max_lag, padding.at(ntuple_name),
-                                                   indexed.at(ntuple_name));
-    }
+    std::string layer;
+    std::string stage;
+    bool simulation{false};
+    bool sim_particles{false};
+    double step_ns{2000.0};
+    double max_lag_ns{1000.0};
 };
 
-template <typename Hit, typename Registrar>
-void provide_hit_type(Registrar& m, WindowedReading const& reading, std::string const& ntuple_name,
-                      phlex::experimental::identifier const& layer) {
-    provide_stream(m, reading.stream<Hit>(ntuple_name, time_field<Hit>), ntuple_name, layer);
-}
+// Scans the input once at construction and owns the resulting windowing, so
+// the driver below takes the number of windows from here rather than working
+// it out again. Each product's provider (and its WindowedStream, i.e. its
+// RNTupleReader and, in indexed mode, its index) is only made when some
+// consumer asks phlex for that product.
+class DigitisedHitsSource final : public phlex::source {
+   public:
+    explicit DigitisedHitsSource(SourceSettings settings)
+        : settings_{std::move(settings)},
+          ntuples_{SHiP::trout::digitised_ntuples(settings_.simulation, settings_.sim_particles)},
+          scan_{SHiP::trout::scan_input(settings_.input_file, ntuples_, settings_.step_ns)} {
+        auto const& windowing = scan_.windowing;
+        spdlog::info(
+            "read_digitised_hits: detector hits span [{}, {}] ns, giving {} windows owning "
+            "{} ns each",
+            scan_.all.min, scan_.all.max, windowing.size(), settings_.step_ns);
+
+        for (auto const& ntuple : ntuples_) {
+            padding_[ntuple.name] = ntuple.padding;
+            spdlog::info(
+                "read_digitised_hits: {} is padded by {} ns before and {} ns after the "
+                "owned slice",
+                ntuple.name, ntuple.padding.before_ns, ntuple.padding.after_ns);
+        }
+
+        for (auto const& [name, scan] : scan_.per_ntuple) {
+            indexed_[name] = scan.max_lag > settings_.max_lag_ns;
+            spdlog::info("read_digitised_hits: {} is up to {} ns out of time order, so it is {}",
+                         name, scan.max_lag,
+                         indexed_[name] ? "indexed (more than max_lag_ns)" : "streamed");
+        }
+    }
+
+    TimeWindowing const& windowing() const { return scan_.windowing; }
+    std::string const& layer() const { return settings_.layer; }
+
+    phlex::provider_bundles create_providers(phlex::product_selector const& selector) override {
+        phlex::provider_bundles bundles;
+
+        offer<TimeWindow>(bundles, selector, "window", phlex::concurrency::unlimited,
+                          [windowing = scan_.windowing] {
+                              return [windowing](phlex::data_cell_index const& id) {
+                                  if (id.number() >= windowing.size())
+                                      throw std::out_of_range(std::format(
+                                          "read_digitised_hits: window {} requested but the "
+                                          "input only spans {}",
+                                          id.number(), windowing.size()));
+                                  return windowing.at(id.number());
+                              };
+                          });
+
+        offer_hits<SHiP::UBTHit>(bundles, selector, "ubt_hits");
+        offer_hits<SHiP::SBTHit>(bundles, selector, "sbt_hits");
+        offer_hits<SHiP::StrawTubesHit>(bundles, selector, "straw_tubes_hits");
+        offer_stream<std::uint64_t>(bundles, selector, "straw_tubes_hit_ids", "straw_tubes_hits",
+                                    time_field<SHiP::StrawTubesHit>);
+        offer_hits<SHiP::CaloHit>(bundles, selector, "calorimeter_hits");
+        offer_hits<SHiP::TimeDetHit>(bundles, selector, "timing_detector_hits");
+        if (settings_.simulation)
+            offer_hits<SHiP::SimHit>(bundles, selector, "sim_hits");
+        if (settings_.simulation && settings_.sim_particles)
+            offer_hits<SHiP::SimParticle>(bundles, selector, "sim_particles");
+
+        return bundles;
+    }
+
+   private:
+    // Adds a provider of `suffix` to `bundles` if `selector` asks for it.
+    // make_function is only called then, so nothing is opened for a product
+    // no consumer reads.
+    template <typename Product, typename MakeFunction>
+    void offer(phlex::provider_bundles& bundles, phlex::product_selector const& selector,
+               std::string const& suffix, phlex::concurrency max_concurrency,
+               MakeFunction make_function) const {
+        using namespace phlex::experimental;
+        algorithm_name creator{identifier{kCreator}, identifier{"read_" + suffix}};
+        product_specification spec{std::move(creator), identifier{suffix},
+                                   make_type_id<Product>()};
+        if (!selector.match(spec, identifier{settings_.layer}, identifier{settings_.stage}))
+            return;
+        bundles.push_back(phlex::provider_bundle{
+            .provider_function = [f = make_function()](phlex::data_cell_index const& id)
+                -> product_ptr { return product_for(f(id)); },
+            .max_concurrency = max_concurrency,
+            .spec = std::move(spec),
+            .layer = settings_.layer,
+            .stage = settings_.stage});
+    }
+
+    // A WindowedStream of `ntuple_name`, provided as `suffix`. The provider
+    // returns the shared_ptr itself, so consumers share one copy of the
+    // window's hits rather than each getting their own. Streams aren't
+    // thread-safe, so the provider is serial.
+    template <typename T>
+    void offer_stream(phlex::provider_bundles& bundles, phlex::product_selector const& selector,
+                      std::string const& suffix, std::string const& ntuple_name,
+                      char const* field) const {
+        offer<std::shared_ptr<std::vector<T>>>(
+            bundles, selector, suffix, phlex::concurrency::serial, [&, this] {
+                auto stream = std::make_shared<WindowedStream<T>>(
+                    settings_.input_file, ntuple_name, field, scan_.windowing,
+                    settings_.max_lag_ns, padding_.at(ntuple_name), indexed_.at(ntuple_name));
+                return [stream](phlex::data_cell_index const& id) {
+                    return stream->window(id.number());
+                };
+            });
+    }
+
+    template <typename Hit>
+    void offer_hits(phlex::provider_bundles& bundles, phlex::product_selector const& selector,
+                    std::string const& ntuple_name) const {
+        offer_stream<Hit>(bundles, selector, ntuple_name, ntuple_name, time_field<Hit>);
+    }
+
+    SourceSettings settings_;
+    std::vector<SHiP::trout::DigitisedNtuple> ntuples_;
+    SHiP::trout::InputTimeScan scan_;
+    std::map<std::string, TimePadding> padding_;
+    std::map<std::string, bool> indexed_;
+};
 
 }  // namespace
 
-PHLEX_REGISTER_PROVIDERS(m, config) {
+PHLEX_REGISTER_SOURCE(s, config) {
     // Each collection's provider is serial, but phlex runs different
     // providers at the same time, so several RNTuple readers deserialise
     // dictionary-backed SHiP types on different threads at once. That needs
@@ -268,69 +384,67 @@ PHLEX_REGISTER_PROVIDERS(m, config) {
     // happen before any reader is opened.
     ROOT::EnableThreadSafety();
 
-    auto const input_file = config.get<std::string>("input_file");
-    auto const layer = phlex::experimental::identifier{config.get<std::string>("layer")};
-    auto const isSim = config.get<bool>("simulation", false);
+    SourceSettings settings;
+    settings.input_file = config.get<std::string>("input_file");
+    settings.layer = config.get<std::string>("layer");
+    // Implicit providers must name a real stage ("CURRENT" is rejected), and
+    // a source can't see the job's, so the workflow passes it.
+    settings.stage = config.get<std::string>("stage");
+    if (settings.stage.empty() || settings.stage == "CURRENT")
+        throw std::invalid_argument(
+            "read_digitised_hits: 'stage' must name the job's stage (e.g. 'reconstruction'); "
+            "'CURRENT' is reserved");
+    settings.simulation = config.get<bool>("simulation", false);
     // Off by default: aegir keeps every Geant4 particle, which can be orders
     // of magnitude more entries than all the hits together, and nothing in
     // reconstruction uses them.
-    auto const simParticles = isSim && config.get<bool>("sim_particles", false);
-    auto const step_ns = config.get<double>("step_ns", 2000.0);
-    auto const max_lag_ns = config.get<double>("max_lag_ns", 1000.0);
-    if (!(max_lag_ns >= 0.0))
+    settings.sim_particles = settings.simulation && config.get<bool>("sim_particles", false);
+    settings.step_ns = config.get<double>("step_ns", 2000.0);
+    settings.max_lag_ns = config.get<double>("max_lag_ns", 1000.0);
+    if (!(settings.max_lag_ns >= 0.0))
         throw std::invalid_argument("read_digitised_hits: max_lag_ns must be >= 0");
 
-    // time_window_driver runs the same scan with the same settings to decide
-    // how many "spill" data cells to emit, so the two agree on the windows.
-    // Truth is scanned too (for its max_lag), but only detector hits set the
-    // span, so the driver can leave it out and still agree.
-    auto const ntuples = SHiP::trout::digitised_ntuples(isSim, simParticles);
-    auto const [scans, all, windowing] = SHiP::trout::scan_input(input_file, ntuples, step_ns);
-    spdlog::info(
-        "read_digitised_hits: detector hits span [{}, {}] ns, giving {} windows owning "
-        "{} ns each",
-        all.min, all.max, windowing.size(), step_ns);
+    // Registered under the workflow's label for this source, which is what
+    // the driver block's uses_sources names.
+    auto const name = config.get<std::string>("module_label");
+    s.add_source<DigitisedHitsSource>(name, std::move(settings));
+}
 
-    std::map<std::string, TimePadding> padding;
-    for (auto const& ntuple : ntuples) {
-        padding[ntuple.name] = ntuple.padding;
-        spdlog::info(
-            "read_digitised_hits: {} is padded by {} ns before and {} ns after the "
-            "owned slice",
-            ntuple.name, ntuple.padding.before_ns, ntuple.padding.after_ns);
+// Emits one data cell per time window of the source named in the driver
+// block's uses_sources, so the count comes straight from the source's scan.
+PHLEX_REGISTER_DRIVER(d, config) {
+    auto const layer = config.get<std::string>("layer", std::string{"spill"});
+
+    // Optional cap, to process just the first part of the input.
+    std::optional<std::size_t> max_spills;
+    if (auto const cap = config.get_if_present<std::int64_t>("max_spills")) {
+        if (*cap < 1)
+            throw std::invalid_argument("read_digitised_hits: driver max_spills must be >= 1");
+        max_spills = static_cast<std::size_t>(*cap);
     }
 
-    std::map<std::string, bool> indexed;
-    for (auto const& [name, scan] : scans) {
-        indexed[name] = scan.max_lag > max_lag_ns;
-        spdlog::info("read_digitised_hits: {} is up to {} ns out of time order, so it is {}", name,
-                     scan.max_lag, indexed[name] ? "indexed (more than max_lag_ns)" : "streamed");
-    }
+    // phlex matches the first parameter's type exactly, so the cursor (a cheap,
+    // copyable view) is taken by value rather than const&. The source comes
+    // second, from uses_sources.
+    return d.driver(
+        phlex::fixed_hierarchy{std::vector<std::vector<std::string>>{{"job", layer}}},
+        [layer, max_spills](phlex::data_cell_cursor job, DigitisedHitsSource const& input) {
+            if (input.layer() != layer)
+                throw std::invalid_argument(std::format(
+                    "read_digitised_hits: the driver emits '{}' data cells but its source "
+                    "provides '{}'",
+                    layer, input.layer()));
 
-    m.provide(
-         "provide_window",
-         [windowing](phlex::data_cell_index const& id) -> TimeWindow {
-             if (id.number() >= windowing.size())
-                 throw std::out_of_range(
-                     std::format("read_digitised_hits: window {} requested but the input only "
-                                 "spans {}; check time_window_driver's settings match",
-                                 id.number(), windowing.size()));
-             return windowing.at(id.number());
-         },
-         phlex::concurrency::unlimited)
-        .output_product("rntuple_source", "window", layer);
-
-    WindowedReading const reading{input_file, windowing, max_lag_ns, indexed, padding};
-    provide_hit_type<SHiP::UBTHit>(m, reading, "ubt_hits", layer);
-    provide_hit_type<SHiP::SBTHit>(m, reading, "sbt_hits", layer);
-    provide_hit_type<SHiP::StrawTubesHit>(m, reading, "straw_tubes_hits", layer);
-    provide_stream(
-        m, reading.stream<std::uint64_t>("straw_tubes_hits", time_field<SHiP::StrawTubesHit>),
-        "straw_tubes_hit_ids", layer);
-    provide_hit_type<SHiP::CaloHit>(m, reading, "calorimeter_hits", layer);
-    provide_hit_type<SHiP::TimeDetHit>(m, reading, "timing_detector_hits", layer);
-    if (isSim)
-        provide_hit_type<SHiP::SimHit>(m, reading, "sim_hits", layer);
-    if (simParticles)
-        provide_hit_type<SHiP::SimParticle>(m, reading, "sim_particles", layer);
+            std::size_t n_windows = input.windowing().size();
+            spdlog::info("read_digitised_hits: driver emits {} '{}' data cells", n_windows,
+                         layer);
+            if (max_spills && *max_spills < n_windows) {
+                spdlog::info(
+                    "read_digitised_hits: max_spills limits this to the first {} of {} windows",
+                    *max_spills, n_windows);
+                n_windows = *max_spills;
+            }
+            for (std::size_t i = 0; i < n_windows; ++i)
+                job.yield_child(layer, i);
+        });
 }

@@ -3,9 +3,9 @@
 // SPDX-License-Identifier: LGPL-3.0-or-later
 
 // DigitisedTimeScan.hpp — the first pass over a digitised-hit file's time
-// columns, shared by read_digitised_hits (which serves the windows) and
-// time_window_driver (which emits one "spill" data cell per window), so both
-// derive the same TimeWindowing from the same input and configuration.
+// columns, which read_digitised_hits' source runs once to cut the input into
+// windows (TimeWindowing). Its driver takes the number of windows from that
+// same source, so nothing else scans the file.
 //
 // It also holds each RNTuple's time padding: how much context around a
 // window's owned slice that detector's reconstruction needs (see

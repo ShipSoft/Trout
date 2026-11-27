@@ -34,21 +34,23 @@ function(params)
     // Include the per-subdetector placeholder reconstruction modules.
     full_reco: true,
   } + params;
+  local stage = 'reconstruction';
   {
-    stage: 'reconstruction',
+    stage: stage,
     driver: {
-      // One "spill" data cell per time window of the input, counted from the
-      // file itself. Must see the same input_file and step_ns as
-      // rntuple_source below.
-      cpp: 'time_window_driver',
-      input_file: p.input_file,
+      // One "spill" data cell per time window of the input. The windows come
+      // from rntuple_source below, which scans the file and is handed to the
+      // driver (the same plugin) through uses_sources.
+      cpp: 'read_digitised_hits',
+      uses_sources: ['rntuple_source'],
       layer: 'spill',
-      step_ns: p.step_ns,
     } + (if p.max_spills != null then { max_spills: p.max_spills } else {}),
 
     sources: {
       rntuple_source: {
         cpp: 'read_digitised_hits',
+        // A source's products need a stage of their own; keep it the job's.
+        stage: stage,
         input_file: p.input_file,
         layer: 'spill',
         simulation: p.simulation,
