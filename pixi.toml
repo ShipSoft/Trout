@@ -35,7 +35,7 @@ field-service-tools = ">=0.6.0,<0.7"
 # workflows/lib/reconstruction.libsonnet.
 ship-field-maps = ">=0.1"
 acts-core = "48.*"
-phlex = ">=0.4.1"
+phlex = ">=0.5.0"
 root = ">=6.36"
 geant4 = ">=11.3"
 # Temporary: SHiPGeometryServiceConfig.cmake finds Geant4, whose config needs
