@@ -62,7 +62,7 @@ inline std::optional<Acts::BoundTrackParameters> makeSeedFromHitPair(
     Acts::BoundVector pars = Acts::BoundVector::Zero();
     pars[Acts::eBoundLoc0] = m0.local[0];
     pars[Acts::eBoundLoc1] = m0.local[1];
-    pars[Acts::eBoundTime] = 0.;
+    pars[Acts::eBoundTime] = m0.time;
     pars[Acts::eBoundPhi] = Acts::VectorHelpers::phi(direction);
     pars[Acts::eBoundTheta] = Acts::VectorHelpers::theta(direction);
     double const p0 = 10.0 * Acts::UnitConstants::GeV;
@@ -90,40 +90,6 @@ inline std::optional<Acts::BoundTrackParameters> makeSeedFromHitPair(
 
     return Acts::BoundTrackParameters(m0.surface->getSharedPtr(), pars, cov,
                                       Acts::ParticleHypothesis::pion());
-}
-
-// Cheap stand-in for a real chi2 measurement selector: keeps only the
-// candidate whose calibrated local position is closest (squared distance)
-// to the predicted one at this surface, discarding the rest. With no
-// selector at all, every hit within the (currently generous) station-match
-// window is accepted as a separate branch — hundreds of candidates on a
-// busy station — which is the likely cause of the CKF crash; this collapses
-// that back down to one candidate per surface to test that diagnosis before
-// committing to a real Acts::MeasurementSelector.
-template <typename TrackStateProxy>
-Acts::Result<std::pair<typename std::vector<TrackStateProxy>::iterator,
-                       typename std::vector<TrackStateProxy>::iterator>>
-selectNearestMeasurement(std::vector<TrackStateProxy>& candidates, bool& isOutlier,
-                         const Acts::Logger&) {
-    isOutlier = false;
-    if (candidates.empty())
-        return std::pair{candidates.begin(), candidates.end()};
-
-    auto best = candidates.begin();
-    double bestDist2 = std::numeric_limits<double>::max();
-    for (auto it = candidates.begin(); it != candidates.end(); ++it) {
-        auto const pred = it->predicted();
-        auto const meas = it->template calibrated<2>();
-        double const dx = pred[Acts::eBoundLoc0] - meas[0];
-        double const dy = pred[Acts::eBoundLoc1] - meas[1];
-        double const dist2 = dx * dx + dy * dy;
-        if (dist2 < bestDist2) {
-            bestDist2 = dist2;
-            best = it;
-        }
-    }
-    std::iter_swap(candidates.begin(), best);
-    return std::pair{candidates.begin(), std::next(candidates.begin())};
 }
 
 class SpectrometerCkf {
@@ -180,11 +146,10 @@ class SpectrometerCkf {
             &sourceLinkAccessor);
         trackStateCreator.calibrator
             .template connect<&SpectrometerMeasurements::calibrator<Trajectory>>(&measurements);
-        // Cheap nearest-candidate cut (see selectNearestMeasurement above) in
-        // place of the default accept-everything selector — unbounded
-        // branching on busy stations is otherwise combinatorially explosive.
-        trackStateCreator.measurementSelector.template connect<
-            &selectNearestMeasurement<typename TrackContainer::TrackStateProxy>>();
+
+        trackStateCreator.measurementSelector
+            .template connect<&SpectrometerMeasurements::selectNearestInTimeGate<
+                typename TrackContainer::TrackStateProxy>>(&measurements);
 
         Acts::GainMatrixUpdater kfUpdater;
 

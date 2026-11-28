@@ -50,12 +50,15 @@ find_package(
 
 find_package(SHiPRandom 0.4 REQUIRED)
 
-# Digitised (flat, record-per-hit) file reader plugin
+# Digitised (flat, record-per-hit) file reader plugin: a phlex source that
+# provides the hits a time window at a time, and the driver that emits one
+# "spill" data cell per window of that source.
 add_library(
     read_digitised_hits
     MODULE
     src/io/read_digitised_hits.cpp
     include/io/DigitisedTimeScan.hpp
+    include/io/StrawTiming.hpp
     include/io/TimeWindow.hpp
 )
 target_include_directories(
@@ -68,29 +71,6 @@ target_link_libraries(
         phlex::module
         SHiP::DataModel
         ROOT::Core
-        ROOT::RIO
-        ROOT::ROOTNTuple
-        spdlog::spdlog
-)
-
-# Driver plugin: one "spill" data cell per time window of the digitised-hit
-# input, counted with the same time scan read_digitised_hits does.
-add_library(
-    time_window_driver
-    MODULE
-    src/io/time_window_driver.cpp
-    include/io/DigitisedTimeScan.hpp
-    include/io/TimeWindow.hpp
-)
-target_include_directories(
-    time_window_driver
-    PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/include"
-)
-target_link_libraries(
-    time_window_driver
-    PRIVATE
-        phlex::module
-        SHiP::DataModel
         ROOT::RIO
         ROOT::ROOTNTuple
         spdlog::spdlog
@@ -148,6 +128,11 @@ add_library(
     include/detectors/spectrometer/generate_seeds.hpp
     src/detectors/spectrometer/fit_seed.cpp
     include/detectors/spectrometer/fit_seed.hpp
+    src/detectors/spectrometer/resolve_tracks.cpp
+    include/detectors/spectrometer/resolve_tracks.hpp
+    include/detectors/spectrometer/TrackCandidate.hpp
+    include/io/StrawTiming.hpp
+    include/io/TimeWindow.hpp
     include/PhlexModuleProxy.hpp
     include/detectors/spectrometer/SpillContext.hpp
     include/detectors/spectrometer/SpectrometerCkf.hpp
@@ -245,7 +230,6 @@ include(GNUInstallDirs)
 
 set(PLUGIN_TARGETS
     read_digitised_hits
-    time_window_driver
     acts_geometry_provider
     acts_field_provider
     passthrough

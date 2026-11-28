@@ -6,11 +6,17 @@
 
 #include "detectors/spectrometer/SpectrometerCkf.hpp"
 #include "detectors/spectrometer/SpillContext.hpp"
+#include "detectors/spectrometer/TrackCandidate.hpp"
 #include "detectors/spectrometer/generate_seeds.hpp"
 
+#include <Acts/Definitions/Units.hpp>
+
 #include <SHiP/TrackFitResult.hpp>
+#include <algorithm>
 #include <cstddef>
+#include <limits>
 #include <memory>
+#include <utility>
 #include <vector>
 
 namespace SHiP::trout {
@@ -31,12 +37,13 @@ void register_fit_seed(ModuleProxy const& m, phlex::experimental::identifier con
     m.transform(
          "fit_seed",
          [](SeedHitPair const& pair,
-            std::shared_ptr<SpillContext> const& ctx) -> std::vector<SHiP::TrackFitResult> {
-             std::vector<SHiP::TrackFitResult> results;
+            std::shared_ptr<SpillContext> const& ctx) -> std::vector<TrackCandidate> {
+             std::vector<TrackCandidate> results;
              if (!ctx || !ctx->measurements || !ctx->ckf)
                  return results;
-             auto const& m0 = ctx->measurements->measurements()[pair.idx0];
-             auto const& m1 = ctx->measurements->measurements()[pair.idx1];
+             auto const& meas = ctx->measurements->measurements();
+             auto const& m0 = meas[pair.idx0];
+             auto const& m1 = meas[pair.idx1];
              auto seed = makeSeedFromHitPair(m0, m1);
              if (!seed)
                  return results;
@@ -44,7 +51,18 @@ void register_fit_seed(ModuleProxy const& m, phlex::experimental::identifier con
              for (auto const& hits : candidates) {
                  if (hits.size() < kMinHitsPerTrack)
                      continue;
-                 results.push_back(ctx->ckf->refit(*seed, *ctx->measurements, hits));
+                 TrackCandidate candidate{ctx->ckf->refit(*seed, *ctx->measurements, hits), {}};
+                 // The track's time is its earliest hit's, which is also what
+                 // resolve_tracks assigns it to a window by.
+                 double earliest = std::numeric_limits<double>::infinity();
+                 candidate.hitIds.reserve(hits.size());
+                 for (auto const idx : hits) {
+                     candidate.hitIds.push_back(meas[idx].hitId);
+                     earliest = std::min(earliest, meas[idx].time);
+                 }
+                 std::ranges::sort(candidate.hitIds);
+                 candidate.fit.time = earliest / Acts::UnitConstants::ns;
+                 results.push_back(std::move(candidate));
              }
              return results;
          },
@@ -54,7 +72,7 @@ void register_fit_seed(ModuleProxy const& m, phlex::experimental::identifier con
                 .creator = "generate_seeds", .layer = seedLayer, .suffix = "seed_hit_pair"},
             phlex::product_selector{
                 .creator = "prepare_measurements", .layer = layer, .suffix = "spill_context"})
-        .output_product_suffixes("track_fit_result");
+        .output_product_suffixes("track_candidates");
 }
 
 }  // namespace SHiP::trout

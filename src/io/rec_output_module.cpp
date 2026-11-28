@@ -220,7 +220,7 @@ void register_rec_output(ModuleProxy const& m, phlex::configuration const& confi
 
     // The reconstructed collections, each named once: the noop observer, the
     // RNTuple writers and the histogrammers below all take them from here.
-    auto const tracks = selector("fit_seed", "seed", "track_fit_result");
+    auto const tracks = selector("resolve_tracks", "spill", "track_fit_result");
     auto const ubt_reco = selector("upstream_tagger_reco", "spill", "upstream_tagger_reco");
     auto const sbt_reco = selector("surround_tagger_reco", "spill", "surround_tagger_reco");
     auto const calo_reco = selector("calorimeter_reco", "spill", "calorimeter_reco");
