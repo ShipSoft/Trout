@@ -61,7 +61,6 @@
 #include <ROOT/RNTupleView.hxx>
 #include <TROOT.h>
 #include <tuple>
-#include <type_traits>
 
 #include <SHiP/SimHit.hpp>
 #include <SHiP/SimParticle.hpp>
@@ -74,9 +73,11 @@
 #include <cstdint>
 #include <deque>
 #include <format>
+#include <functional>
 #include <limits>
 #include <map>
 #include <memory>
+#include <mutex>
 #include <optional>
 #include <spdlog/spdlog.h>
 #include <stdexcept>
@@ -91,30 +92,33 @@ using SHiP::trout::TimePadding;
 using SHiP::trout::TimeWindow;
 using SHiP::trout::TimeWindowing;
 
-// Hands out the entries of one RNTuple a window at a time, streamed or
-// indexed (see the top of this file). T is either the hit type itself or
-// std::uint64_t, in which case the values are the entries' indices in the
-// RNTuple — stable ids for the hits across overlapping windows. Either way,
-// a window's values come in file order. Not thread-safe: register it serial.
-template <typename T>
+// Hands out the hits of one RNTuple a window at a time, streamed or indexed
+// (see the top of this file), optionally with each hit's entry index in the
+// RNTuple: a stable id for the hit across overlapping windows. A window's
+// hits (and ids, in the same order) come in file order. Not thread-safe:
+// SharedWindows below locks it.
+template <typename Hit>
 class WindowedStream {
-    static constexpr bool kEntryIds = std::is_same_v<T, std::uint64_t>;
-
    public:
+    struct Window {
+        std::shared_ptr<std::vector<Hit>> hits;
+        std::shared_ptr<std::vector<std::uint64_t>> ids;  ///< Null unless with_ids
+    };
+
     WindowedStream(std::string const& input_file, std::string const& ntuple_name, char const* time,
                    TimeWindowing const& windowing, double max_lag, TimePadding padding,
-                   bool indexed)
+                   bool indexed, bool with_ids)
         : name_{ntuple_name},
           reader_{ROOT::RNTupleReader::Open(ntuple_name, input_file)},
           time_view_{reader_->GetView<double>(time)},
+          hit_view_{reader_->GetView<Hit>("hit")},
           n_entries_{reader_->GetNEntries()},
           windowing_{windowing},
           max_lag_{max_lag},
           padding_{padding},
           indexed_{indexed},
+          with_ids_{with_ids},
           served_(windowing.size(), false) {
-        if constexpr (!kEntryIds)
-            value_view_.emplace(reader_->GetView<T>("hit"));
         if (indexed_) {
             index_.reserve(n_entries_);
             for (ROOT::NTupleSize_t i = 0; i < n_entries_; ++i)
@@ -125,7 +129,7 @@ class WindowedStream {
         }
     }
 
-    std::shared_ptr<std::vector<T>> window(std::size_t i) {
+    Window window(std::size_t i) {
         if (i >= windowing_.size())
             throw std::out_of_range(std::format(
                 "read_digitised_hits: window {} requested but the input only spans {} windows; "
@@ -138,21 +142,20 @@ class WindowedStream {
    private:
     struct Entry {
         double time;
-        T value;
+        ROOT::NTupleSize_t entry;
+        Hit hit;
     };
     struct IndexEntry {
         double time;
         ROOT::NTupleSize_t entry;
     };
 
-    T load(ROOT::NTupleSize_t entry) {
-        if constexpr (kEntryIds)
-            return entry;
-        else
-            return (*value_view_)(entry);
+    Window empty_window() const {
+        return Window{.hits = std::make_shared<std::vector<Hit>>(),
+                      .ids = with_ids_ ? std::make_shared<std::vector<std::uint64_t>>() : nullptr};
     }
 
-    std::shared_ptr<std::vector<T>> from_index(double lo, double hi) {
+    Window from_index(double lo, double hi) {
         auto const first = std::ranges::lower_bound(index_, lo, {}, &IndexEntry::time);
         auto const last = std::ranges::lower_bound(first, index_.end(), hi, {}, &IndexEntry::time);
         // Read in file order: friendlier to ROOT's cluster cache than time
@@ -163,20 +166,25 @@ class WindowedStream {
             entries.push_back(it->entry);
         std::ranges::sort(entries);
 
-        auto out = std::make_shared<std::vector<T>>();
-        out->reserve(entries.size());
+        auto out = empty_window();
+        out.hits->reserve(entries.size());
         for (auto const e : entries)
-            out->push_back(load(e));
+            out.hits->push_back(hit_view_(e));
+        if (out.ids)
+            out.ids->assign(entries.begin(), entries.end());
         return out;
     }
 
-    std::shared_ptr<std::vector<T>> from_stream(std::size_t i, double lo, double hi) {
+    Window from_stream(std::size_t i, double lo, double hi) {
         read_until(hi + max_lag_);
 
-        auto out = std::make_shared<std::vector<T>>();
+        auto out = empty_window();
         for (auto const& e : buffer_) {
-            if (e.time >= lo && e.time < hi)
-                out->push_back(e.value);
+            if (e.time >= lo && e.time < hi) {
+                out.hits->push_back(e.hit);
+                if (out.ids)
+                    out.ids->push_back(e.entry);
+            }
         }
 
         served_[i] = true;
@@ -208,7 +216,7 @@ class WindowedStream {
                     "read, more than max_lag_ns = {}",
                     name_, next_, t, max_time_read_ - t, max_lag_));
             max_time_read_ = std::max(max_time_read_, t);
-            buffer_.push_back(Entry{t, load(next_)});
+            buffer_.push_back(Entry{t, next_, hit_view_(next_)});
             ++next_;
         }
     }
@@ -216,13 +224,14 @@ class WindowedStream {
     std::string name_;
     std::unique_ptr<ROOT::RNTupleReader> reader_;
     ROOT::RNTupleView<double> time_view_;
-    std::optional<ROOT::RNTupleView<T>> value_view_;
+    ROOT::RNTupleView<Hit> hit_view_;
     ROOT::NTupleSize_t n_entries_;
 
     TimeWindowing windowing_;
     double max_lag_;
     TimePadding padding_;
     bool indexed_;
+    bool with_ids_;
 
     // Indexed mode.
     std::vector<IndexEntry> index_;
@@ -233,6 +242,69 @@ class WindowedStream {
     std::deque<Entry> buffer_;
     std::vector<bool> served_;
     std::size_t first_unserved_{0};
+};
+
+// One RNTuple's WindowedStream, shared by the up to two products read from
+// it: the hits, and (straw tubes only, today) their ids. So the RNTuple is
+// opened, indexed and read once however many of them are consumed.
+//
+// The two products' providers are separate phlex nodes and may run at the
+// same time, so every access takes mutex_. Whichever provider asks for window
+// i first reads it, holding the lock, and leaves the other half in pending_
+// for the other provider, which then just picks it up. Each provider asks
+// for each window once, so pending_ only holds windows one provider has
+// reached and the other hasn't yet. phlex can't serialise implicit providers
+// with a resource token (provider_bundle has no way to ask for one), hence
+// the mutex.
+template <typename Hit>
+class SharedWindows {
+    using Window = typename WindowedStream<Hit>::Window;
+
+   public:
+    using StreamFactory = std::function<std::unique_ptr<WindowedStream<Hit>>(bool with_ids)>;
+
+    explicit SharedWindows(StreamFactory make_stream) : make_stream_{std::move(make_stream)} {}
+
+    // Recorded while phlex builds the graph, which is before any window is
+    // read, so the stream is made knowing which halves are consumed. Only
+    // when both are does a window's other half need keeping for later.
+    void want_hits() { want_hits_ = true; }
+    void want_ids() { want_ids_ = true; }
+
+    std::shared_ptr<std::vector<Hit>> hits(std::size_t i) { return take<&Window::hits>(i); }
+    std::shared_ptr<std::vector<std::uint64_t>> ids(std::size_t i) {
+        return take<&Window::ids>(i);
+    }
+
+   private:
+    template <auto Half>
+    auto take(std::size_t i) {
+        std::scoped_lock const lock{mutex_};
+        if (auto it = pending_.find(i); it != pending_.end()) {
+            auto half = std::move(it->second.*Half);
+            pending_.erase(it);
+            // Only possible if one provider asked for the same window twice.
+            if (!half)
+                throw std::logic_error(
+                    std::format("read_digitised_hits: window {} of one product read twice", i));
+            return half;
+        }
+        if (!stream_)
+            stream_ = make_stream_(want_ids_);
+        auto window = stream_->window(i);
+        auto half = std::move(window.*Half);
+        if (want_hits_ && want_ids_)
+            pending_.emplace(i, std::move(window));
+        return half;
+    }
+
+    StreamFactory make_stream_;
+    bool want_hits_{false};
+    bool want_ids_{false};
+
+    std::mutex mutex_;
+    std::unique_ptr<WindowedStream<Hit>> stream_;
+    std::map<std::size_t, Window> pending_;
 };
 
 // The creator every consumer selects these products by (creator =
@@ -255,9 +327,10 @@ struct SourceSettings {
 
 // Scans the input once at construction and owns the resulting windowing, so
 // the driver below takes the number of windows from here rather than working
-// it out again. Each product's provider (and its WindowedStream, i.e. its
-// RNTupleReader and, in indexed mode, its index) is only made when some
-// consumer asks phlex for that product.
+// it out again. Each product's provider is only made when some consumer asks
+// phlex for that product, and each RNTuple's WindowedStream (its
+// RNTupleReader and, in indexed mode, its index) only when a window of it is
+// first read. Products read from the same RNTuple share one stream.
 class DigitisedHitsSource final : public phlex::source {
    public:
     explicit DigitisedHitsSource(SourceSettings settings)
@@ -307,8 +380,8 @@ class DigitisedHitsSource final : public phlex::source {
         offer_hits<SHiP::UBTHit>(bundles, selector, "ubt_hits");
         offer_hits<SHiP::SBTHit>(bundles, selector, "sbt_hits");
         offer_hits<SHiP::StrawTubesHit>(bundles, selector, "straw_tubes_hits");
-        offer_stream<std::uint64_t>(bundles, selector, "straw_tubes_hit_ids", "straw_tubes_hits",
-                                    time_field<SHiP::StrawTubesHit>);
+        offer_hit_ids<SHiP::StrawTubesHit>(bundles, selector, "straw_tubes_hit_ids",
+                                           "straw_tubes_hits");
         offer_hits<SHiP::CaloHit>(bundles, selector, "calorimeter_hits");
         offer_hits<SHiP::TimeDetHit>(bundles, selector, "timing_detector_hits");
         if (settings_.simulation)
@@ -342,29 +415,53 @@ class DigitisedHitsSource final : public phlex::source {
             .stage = settings_.stage});
     }
 
-    // A WindowedStream of `ntuple_name`, provided as `suffix`. The provider
+    // The SharedWindows of `ntuple_name`, made on first use, so the hits and
+    // ids products of one RNTuple share it. Each name only ever holds one
+    // Hit type, which is what makes the cast back safe.
+    template <typename Hit>
+    std::shared_ptr<SharedWindows<Hit>> shared_windows(std::string const& ntuple_name) {
+        auto& slot = shared_[ntuple_name];
+        if (!slot) {
+            slot = std::make_shared<SharedWindows<Hit>>([this, ntuple_name](bool with_ids) {
+                return std::make_unique<WindowedStream<Hit>>(
+                    settings_.input_file, ntuple_name, time_field<Hit>, scan_.windowing,
+                    settings_.max_lag_ns, padding_.at(ntuple_name), indexed_.at(ntuple_name),
+                    with_ids);
+            });
+        }
+        return std::static_pointer_cast<SharedWindows<Hit>>(slot);
+    }
+
+    // `ntuple_name`'s hits, provided under the same name. The provider
     // returns the shared_ptr itself, so consumers share one copy of the
-    // window's hits rather than each getting their own. Streams aren't
-    // thread-safe, so the provider is serial.
-    template <typename T>
-    void offer_stream(phlex::provider_bundles& bundles, phlex::product_selector const& selector,
-                      std::string const& suffix, std::string const& ntuple_name,
-                      char const* field) const {
-        offer<std::shared_ptr<std::vector<T>>>(
-            bundles, selector, suffix, phlex::concurrency::serial, [&, this] {
-                auto stream = std::make_shared<WindowedStream<T>>(
-                    settings_.input_file, ntuple_name, field, scan_.windowing,
-                    settings_.max_lag_ns, padding_.at(ntuple_name), indexed_.at(ntuple_name));
-                return [stream](phlex::data_cell_index const& id) {
-                    return stream->window(id.number());
+    // window's hits rather than each getting their own. Serial, so one
+    // product's windows are read one at a time.
+    template <typename Hit>
+    void offer_hits(phlex::provider_bundles& bundles, phlex::product_selector const& selector,
+                    std::string const& ntuple_name) {
+        offer<std::shared_ptr<std::vector<Hit>>>(
+            bundles, selector, ntuple_name, phlex::concurrency::serial, [&, this] {
+                auto windows = shared_windows<Hit>(ntuple_name);
+                windows->want_hits();
+                return [windows](phlex::data_cell_index const& id) {
+                    return windows->hits(id.number());
                 };
             });
     }
 
+    // The entry ids of `ntuple_name`'s hits, provided as `suffix`, in the
+    // same order as the hits. Read from the same stream as the hits.
     template <typename Hit>
-    void offer_hits(phlex::provider_bundles& bundles, phlex::product_selector const& selector,
-                    std::string const& ntuple_name) const {
-        offer_stream<Hit>(bundles, selector, ntuple_name, ntuple_name, time_field<Hit>);
+    void offer_hit_ids(phlex::provider_bundles& bundles, phlex::product_selector const& selector,
+                       std::string const& suffix, std::string const& ntuple_name) {
+        offer<std::shared_ptr<std::vector<std::uint64_t>>>(
+            bundles, selector, suffix, phlex::concurrency::serial, [&, this] {
+                auto windows = shared_windows<Hit>(ntuple_name);
+                windows->want_ids();
+                return [windows](phlex::data_cell_index const& id) {
+                    return windows->ids(id.number());
+                };
+            });
     }
 
     SourceSettings settings_;
@@ -372,6 +469,8 @@ class DigitisedHitsSource final : public phlex::source {
     SHiP::trout::InputTimeScan scan_;
     std::map<std::string, TimePadding> padding_;
     std::map<std::string, bool> indexed_;
+    // SharedWindows<Hit> per RNTuple name, type-erased since Hit differs.
+    std::map<std::string, std::shared_ptr<void>> shared_;
 };
 
 }  // namespace
