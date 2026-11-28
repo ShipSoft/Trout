@@ -15,11 +15,11 @@ rattler-build = ">=0.35"
 # SHiP/HEP packages (prefix.dev/ship-experiment/stable + conda-forge). NB: shipdatamodel is
 # declared in [feature.released] below, not here, so the dev environment can
 # swap it for a sibling source build without this channel spec in scope.
-# build_geometry takes the output file only with -o from 0.3.0.
+# build_geometry takes the output file only with -o from 0.3.0. The smoke
+# test's database needs the published tracker stations.
 shipgeometry = ">=0.3"
-# geant4WorldLogical() returns a reference from 0.6, which also drops the
-# pre-0.5 spellings.
-shipgeometryservice = ">=0.6"
+# The core package only (resolveGeometryDbPath): no Geant4.
+geometry-service-core = ">=0.7,<0.8"
 # SHiPFieldService accepts only the requested minor in find_package
 # (SameMinorVersion), so keep these in step with find_package(SHiPFieldService
 # 0.6) in CMakeLists.txt.
@@ -35,6 +35,8 @@ field-service-tools = ">=0.6.0,<0.7"
 # workflows/lib/reconstruction.libsonnet.
 ship-field-maps = ">=0.1"
 acts-core = "48.*"
+# Acts::PluginGeoModel, which reads the published tracker stations.
+acts-plugin-geomodel = "48.*"
 phlex = ">=0.4.1"
 root = ">=6.36"
 random123 = "*"
