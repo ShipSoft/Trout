@@ -5,35 +5,23 @@
 // acts_geometry_provider.cpp — Phlex provider plugin
 //
 // Builds a minimal ACTS tracking geometry for the straw-tube spectrometer
-// from the real SHiP geometry (via SHiP::GeometryService), replacing the
-// hardcoded plane z-positions in ToyDetector/keep_tracks.cpp. One
-// Acts::PlaneSurface per tracker station (/SHiP/trackers/station_1..4),
-// positioned at each station's real global placement.
+// from the real SHiP geometry, replacing the hardcoded plane z-positions in
+// ToyDetector/keep_tracks.cpp. One Acts::PlaneSurface per tracker station
+// (/SHiP/trackers/station_1..4), positioned at each station's real global
+// placement.
 //
-// G4LogicalVolumeStore (used elsewhere, e.g. aegir's detector_construction)
-// only carries shape/material, not placement — so unlike that pattern, this
-// walks the physical-volume tree from the world down, accumulating
-// transforms with G4NavigationHistory (Geant4's own, tested composition
-// logic) to recover each station's global position.
+// The geometry database publishes the stations as full physical volumes
+// under "Trackers" (see Publishing.h in the geometry repository). ACTS's
+// GeoModel plugin reads them with their absolute transforms and converts
+// each station box into a plane surface with rectangle bounds.
 
 #include "acts_geometry_provider.hpp"
 
-#include "SHiP/GeometryService/GeometryThread.h"
+#include "SHiP/GeometryService/GeometryService.h"
 #include "phlex/configuration.hpp"
 #include "phlex/model/data_cell_index.hpp"
 #include "phlex/module.hpp"
 #include "phlex/source.hpp"
-
-#include <G4GeometryManager.hh>
-#include <G4LogicalVolume.hh>
-#include <G4LogicalVolumeStore.hh>
-#include <G4NavigationHistory.hh>
-#include <G4PVPlacement.hh>
-#include <G4PhysicalVolumeStore.hh>
-#include <G4RegionStore.hh>
-#include <G4SolidStore.hh>
-#include <G4VPhysicalVolume.hh>
-#include <G4VSolid.hh>
 
 #include <Acts/Definitions/Units.hpp>
 #include <Acts/Geometry/Blueprint.hpp>
@@ -49,93 +37,95 @@
 #include <Acts/Navigation/TryAllNavigationPolicy.hpp>
 #include <Acts/Surfaces/PlaneSurface.hpp>
 #include <Acts/Surfaces/RectangleBounds.hpp>
+#include <Acts/Utilities/BoundFactory.hpp>
 #include <Acts/Utilities/Logger.hpp>
+#include <Acts/Utilities/TransformHelpers.hpp>
 
+#include <ActsPlugins/GeoModel/GeoModelConverters.hpp>
+#include <ActsPlugins/GeoModel/GeoModelReader.hpp>
+#include <ActsPlugins/GeoModel/GeoModelTree.hpp>
+#include <GeoModelKernel/GeoFullPhysVol.h>
+#include <GeoModelKernel/GeoLogVol.h>
+#include <GeoModelKernel/GeoShape.h>
 #include <algorithm>
 #include <array>
 #include <cstddef>
-#include <cstdlib>
-#include <filesystem>  // NOLINT(build/c++17)
-#include <map>
 #include <memory>
-#include <optional>
 #include <stdexcept>
 #include <string>
 #include <utility>
+#include <vector>
 
 namespace {
 
 constexpr int kNumStations = 4;
+// The GeoPublisher system the geometry publishes the stations under.
+constexpr auto kStationSystem = "Trackers";
 
-struct StationPlacement {
-    G4ThreeVector origin;       // global position, G4/mm units
-    double halfX{0}, halfY{0};  // transverse bounding-box half-extents, mm
-};
-
-using PlacementMap = std::map<std::string, std::optional<StationPlacement>>;
-
-// Single depth-first search from `pv` filling in every requested volume in
-// `targets` (one traversal for all stations instead of one per station),
-// composing the placement transform with G4NavigationHistory (Geant4's own
-// transform composition, rather than hand-rolled affine-transform math) so
-// any rotated ancestors above the tracker are handled correctly.
-void find_stations(G4VPhysicalVolume* pv, PlacementMap& targets, std::size_t& remaining,
-                   G4NavigationHistory& history) {
-    if (auto it = targets.find(pv->GetName()); it != targets.end() && !it->second) {
-        auto const origin = history.GetTopTransform().Inverse().TransformPoint(G4ThreeVector());
-        G4ThreeVector pMin, pMax;
-        pv->GetLogicalVolume()->GetSolid()->BoundingLimits(pMin, pMax);
-        it->second =
-            StationPlacement{origin, 0.5 * (pMax.x() - pMin.x()), 0.5 * (pMax.y() - pMin.y())};
-        --remaining;
-        return;  // stations don't nest inside each other
-    }
-    auto* lv = pv->GetLogicalVolume();
-    for (std::size_t i = 0; i < lv->GetNoDaughters() && remaining > 0; ++i) {
-        auto* daughter = lv->GetDaughter(i);
-        history.NewLevel(daughter, kNormal, daughter->GetCopyNo());
-        find_stations(daughter, targets, remaining, history);
-        history.BackLevel();
-    }
+std::string station_name(int i) {
+    return "/SHiP/trackers/station_" + std::to_string(i + 1);
 }
 
-std::shared_ptr<Acts::TrackingGeometry> build_tracking_geometry(G4VPhysicalVolume* world_pv) {
-    auto station_name = [](int i) { return "/SHiP/trackers/station_" + std::to_string(i + 1); };
-
-    PlacementMap targets;
-    for (int i = 0; i < kNumStations; ++i)
-        targets.emplace(station_name(i), std::nullopt);
-
-    G4NavigationHistory history;
-    history.SetFirstEntry(world_pv);
-    std::size_t remaining = targets.size();
-    find_stations(world_pv, targets, remaining, history);
-
-    std::array<StationPlacement, kNumStations> stations;
+// Converts the published station volumes into sensitive plane surfaces, in
+// station order. The detector elements own the surfaces' placement, so they
+// go into `detector` to outlive the tracking geometry's use of them.
+std::array<std::shared_ptr<Acts::Surface>, kNumStations> convert_stations(
+    ActsPlugins::GeoModelTree const& tree, SHiP::trout::DetectorGeometry& detector) {
+    auto const& published = tree.publisher->getPublishedVol(kStationSystem);
+    Acts::SurfaceBoundFactory boundFactory;
+    std::array<std::shared_ptr<Acts::Surface>, kNumStations> surfaces;
     for (int i = 0; i < kNumStations; ++i) {
-        auto const& found = targets.at(station_name(i));
-        if (!found)
-            throw std::runtime_error("acts_geometry_provider: could not find '" + station_name(i) +
-                                     "' in geometry");
-        stations[i] = *found;
+        auto const it = published.find(station_name(i));
+        if (it == published.end() || !it->second) {
+            throw std::runtime_error("acts_geometry_provider: '" + station_name(i) +
+                                     "' is not published under '" + kStationSystem +
+                                     "' in the geometry database");
+        }
+        auto const& station = it->second;
+        auto const converter =
+            ActsPlugins::geoShapesConverters(station->getLogVol()->getShape()->typeID());
+        if (!converter) {
+            throw std::runtime_error(
+                "acts_geometry_provider: no ACTS converter for the shape of '" + station_name(i) +
+                "'");
+        }
+        auto converted = converter->toSensitiveSurface(
+            station, Acts::makeTransform3(station->getAbsoluteTransform()), boundFactory);
+        if (!converted.ok()) {
+            throw std::runtime_error("acts_geometry_provider: cannot convert '" + station_name(i) +
+                                     "': " + converted.error().message());
+        }
+        auto [element, surface] = std::move(converted.value());
+        detector.detectorElements.push_back(std::move(element));
+        surfaces[i] = std::move(surface);
     }
+    return surfaces;
+}
 
-    // Container volume spanning all stations, plus a margin. Sizes are
-    // computed in G4 mm and converted to ACTS units in one place below.
-    double minZ = stations.front().origin.z();
-    double maxZ = stations.front().origin.z();
-    double halfX = 0, halfY = 0;
+std::shared_ptr<Acts::TrackingGeometry> build_tracking_geometry(
+    std::array<std::shared_ptr<Acts::Surface>, kNumStations> const& stations) {
+    auto const gctx = Acts::GeometryContext::dangerouslyDefaultConstruct();
+
+    // Container volume spanning all stations, plus a margin. Station centres
+    // and half-extents come from the surfaces, in ACTS units (mm).
+    double minZ = stations.front()->center(gctx).z();
+    double maxZ = minZ;
+    double halfX = 0;
+    double halfY = 0;
     for (auto const& s : stations) {
-        minZ = std::min(minZ, s.origin.z());
-        maxZ = std::max(maxZ, s.origin.z());
-        halfX = std::max(halfX, s.halfX);
-        halfY = std::max(halfY, s.halfY);
+        auto const z = s->center(gctx).z();
+        minZ = std::min(minZ, z);
+        maxZ = std::max(maxZ, z);
+        auto const& bounds = dynamic_cast<Acts::RectangleBounds const&>(s->bounds());
+        halfX = std::max(halfX, bounds.halfLengthX());
+        halfY = std::max(halfY, bounds.halfLengthY());
     }
     double const margin_mm = 100.;
-    double const containerHalfX = (halfX + margin_mm) * Acts::UnitConstants::mm;
-    double const containerHalfY = (halfY + margin_mm) * Acts::UnitConstants::mm;
-    double const containerHalfZ = (0.5 * (maxZ - minZ) + margin_mm) * Acts::UnitConstants::mm;
-    double const containerZ = 0.5 * (maxZ + minZ) * Acts::UnitConstants::mm;
+    double const margin = margin_mm * Acts::UnitConstants::mm;
+    double const containerHalfX = halfX + margin;
+    double const containerHalfY = halfY + margin;
+    double const containerHalfZ = (0.5 * (maxZ - minZ)) + margin;
+    double const containerZ = 0.5 * (maxZ + minZ);
 
     auto containerBounds =
         std::make_shared<Acts::CuboidVolumeBounds>(containerHalfX, containerHalfY, containerHalfZ);
@@ -146,23 +136,17 @@ std::shared_ptr<Acts::TrackingGeometry> build_tracking_geometry(G4VPhysicalVolum
                                                               "SpectrometerStations");
 
     for (int i = 0; i < kNumStations; ++i) {
-        auto const& s = stations[i];
-        Acts::Transform3 trf = Acts::Transform3::Identity();
-        trf.translate(Acts::Vector3(s.origin.x() * Acts::UnitConstants::mm,
-                                    s.origin.y() * Acts::UnitConstants::mm,
-                                    s.origin.z() * Acts::UnitConstants::mm));
-
-        auto bounds = std::make_shared<Acts::RectangleBounds>(s.halfX * Acts::UnitConstants::mm,
-                                                              s.halfY * Acts::UnitConstants::mm);
-
-        auto surface = Acts::Surface::makeShared<Acts::PlaneSurface>(trf, bounds);
+        auto const& surface = stations[i];
         surface->assignGeometryId(Acts::GeometryIdentifier{}.withVolume(1).withSensitive(i + 1));
         // Independent of the GeometryIdentifier's sensitive() component above:
-        // Surface::isSensitive() reads its own m_isSensitive flag (default
-        // false), which is what CombinatorialKalmanFilter::filter() checks
-        // before ever attempting createTrackStates. Without this, the CKF
-        // treats every station as non-sensitive and never calibrates a hit.
-        surface->assignIsSensitive(true);
+        // Surface::isSensitive() is what CombinatorialKalmanFilter::filter()
+        // checks before ever attempting createTrackStates; a non-sensitive
+        // station would never calibrate a hit. The converter's detector
+        // element makes the surface sensitive (and forbids setting it here).
+        if (!surface->isSensitive()) {
+            throw std::logic_error("acts_geometry_provider: '" + station_name(i) +
+                                   "' converted to a non-sensitive surface");
+        }
 
         worldVolume->addSurface(surface);
     }
@@ -205,67 +189,22 @@ std::shared_ptr<Acts::TrackingGeometry> build_tracking_geometry(G4VPhysicalVolum
     });
 
     Acts::BlueprintOptions blueprintOptions;
-    auto gctx = Acts::GeometryContext::dangerouslyDefaultConstruct();
     return root->construct(blueprintOptions, gctx);
 }
-
-// Mirrors aegir's Geant4Sim destructor (geant4_module.cpp, issue #68): empty
-// the geometry stores on the geometry thread before the static store
-// destructors run on the main thread at process exit, where the thread-local
-// G4 data (initialised only on the geometry thread) was never set up —
-// deleting the still-registered volumes there segfaults
-// (~G4PVPlacement -> GetRotation -> null per-thread base).
-struct G4GeometryCleanup {
-    ~G4GeometryCleanup() {
-        SHiP::geometry_thread().run([] {
-            G4GeometryManager::GetInstance()->OpenGeometry();
-            G4RegionStore::Clean();
-            G4PhysicalVolumeStore::Clean();
-            G4LogicalVolumeStore::Clean();
-            G4SolidStore::Clean();
-        });
-    }
-};
 
 }  // namespace
 
 PHLEX_REGISTER_PROVIDERS(m, config) {
-    auto db_file = config.get<std::string>("db_file");
+    // A bare file name is looked up under $SHIPGEOMETRY_ROOT/share/geometry.
+    auto const db_file = SHiP::resolveGeometryDbPath(config.get<std::string>("db_file")).string();
 
-    // Resolve relative/bare filenames via SHIPGEOMETRY_ROOT, same convention
-    // as aegir's geometry_geomodel_provider.
-    if (!std::filesystem::exists(db_file)) {
-        auto resolved = std::filesystem::path(db_file).filename();
-        if (auto const* root = std::getenv("SHIPGEOMETRY_ROOT"))
-            resolved = std::filesystem::path(root) / "share" / "geometry" / resolved;
-        if (std::filesystem::exists(resolved))
-            db_file = resolved.string();
-        else
-            throw std::runtime_error("acts_geometry_provider: cannot locate geometry DB '" +
-                                     db_file +
-                                     "'; set SHIPGEOMETRY_ROOT or provide an absolute path");
-    }
-
-    std::shared_ptr<SHiP::trout::DetectorGeometry> detector;
-    SHiP::geometry_thread().run([&] {
-        auto const service = SHiP::GeometryService::sharedFromFile(db_file);
-        // Throws if the GeoModel->G4 conversion fails.
-        auto& worldLV = service->geant4WorldLogical();
-        // Registered in (and owned by) the G4PhysicalVolumeStore; reclaimed
-        // by the G4GeometryCleanup teardown above, never deleted directly.
-        auto* worldPV = new G4PVPlacement(nullptr, G4ThreeVector(), &worldLV, worldLV.GetName(),
-                                          nullptr, false, 0);
-
-        detector = std::make_shared<SHiP::trout::DetectorGeometry>();
-        detector->geometryService = service;
-        detector->trackingGeometry = build_tracking_geometry(worldPV);
-    });
-
-    auto cleanup = std::make_shared<G4GeometryCleanup>();
+    auto const tree = ActsPlugins::GeoModelReader::readFromDb(db_file);
+    auto const detector = std::make_shared<SHiP::trout::DetectorGeometry>();
+    detector->trackingGeometry = build_tracking_geometry(convert_stations(tree, *detector));
 
     m.provide(
          "read_tracking_geometry",
-         [detector, cleanup](phlex::data_cell_index const&)
+         [detector](phlex::data_cell_index const&)
              -> std::shared_ptr<SHiP::trout::DetectorGeometry> { return detector; },
          phlex::concurrency::unlimited)
         .output_product("tracking_geometry", phlex::experimental::identifier{"detector"},

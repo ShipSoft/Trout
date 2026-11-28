@@ -4,14 +4,17 @@
 #pragma once
 
 #include <Acts/Geometry/TrackingGeometry.hpp>
+#include <Acts/Surfaces/SurfacePlacementBase.hpp>
 
-#include <SHiP/GeometryService/GeometryService.h>
 #include <memory>
+#include <vector>
 
 namespace SHiP::trout {
 
 struct DetectorGeometry {
-    std::shared_ptr<SHiP::GeometryService> geometryService;
+    /// Place the sensitive surfaces (one per station); the surfaces point
+    /// back at them, so they live as long as the tracking geometry.
+    std::vector<std::shared_ptr<const Acts::SurfacePlacementBase>> detectorElements;
     std::shared_ptr<const Acts::TrackingGeometry> trackingGeometry;
 };
 

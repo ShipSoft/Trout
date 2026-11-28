@@ -32,11 +32,12 @@ else()
 endif()
 
 # Dependencies
-find_package(SHiPGeometry CONFIG REQUIRED)
-find_package(SHiPGeometryService 0.6 CONFIG REQUIRED)
+# The core component only, for resolveGeometryDbPath: no GeoModel or Geant4.
+find_package(SHiPGeometryService 0.7...<0.8 CONFIG REQUIRED)
 find_package(SHiPDataModel 0.6 REQUIRED)
 find_package(SHiPFieldService 0.6 REQUIRED COMPONENTS MapIO ActsAdapter)
-find_package(Acts 48 CONFIG REQUIRED)
+# PluginGeoModel reads the tracker stations published in the geometry .db.
+find_package(Acts 48 CONFIG REQUIRED COMPONENTS Core PluginGeoModel)
 
 find_package(Boost REQUIRED)
 find_package(TBB REQUIRED)
@@ -58,11 +59,12 @@ target_link_libraries(
 )
 
 # ACTS tracking-geometry provider plugin (builds Acts::TrackingGeometry for
-# the straw-tube stations from the real SHiP geometry via SHiP::GeometryService)
+# the straw-tube stations from the real SHiP geometry via ACTS's GeoModel
+# plugin)
 add_library(acts_geometry_provider MODULE src/acts_geometry_provider.cpp)
 target_link_libraries(
     acts_geometry_provider
-    PRIVATE phlex::module SHiP::GeometryService Acts::Core
+    PRIVATE phlex::module SHiP::GeometryService Acts::Core Acts::PluginGeoModel
 )
 target_include_directories(
     acts_geometry_provider
@@ -122,12 +124,7 @@ add_library(
 )
 target_link_libraries(
     spectrometer_tracking
-    PRIVATE
-        phlex::module
-        SHiP::DataModel
-        Acts::Core
-        SHiP::GeometryService
-        spdlog::spdlog
+    PRIVATE phlex::module SHiP::DataModel Acts::Core spdlog::spdlog
 )
 target_include_directories(
     spectrometer_tracking
